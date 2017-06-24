@@ -88,47 +88,116 @@
 
 				public:
 
+					static_assert((vertexBufferSize & (vertexBufferSize - 1)) == 0, "Vertex buffer size of primitive drawer must be a power of two");
+
 					PrimitiveDrawer(COpenGLStack & parentStack, GLFeatureType primitive)
-						: Rasterizer(parentStack), vertexPointer(0)
+						: Rasterizer(parentStack)
+						, primitive(primitive)
+						, vertexIndex(0)
+						, colourIndex(0)
+						, vertexPointer(reinterpret_cast<float *>(&vertices))
+						, colourPointer(reinterpret_cast<std::uint8_t *>(&colours))
 					{
-						glBegin(primitive);
+						glEnableClientState(GL_COLOR_ARRAY);
+						glEnableClientState(GL_VERTEX_ARRAY);
 					}
 
 					inline void addVertex(OpenGLRendering::Vertex x, OpenGLRendering::Vertex y, OpenGLRendering::Vertex z)
 					{
-						glVertex3f(x, y, z);
+						if (vertexIndex == vertexBufferSize)
+							rasterizeBuffers();
+
+						auto base = vertexPointer + vertexIndex * vertexStride;
+
+						base[0] = x;
+						base[1] = y;
+						base[2] = z;
+
+						vertexIndex++;
 					}
 
-					inline void addColour(ColourType r, ColourType g, ColourType b, ColourType a = (ColourType)1)
+					inline void addColour(ColourType r, ColourType g, ColourType b, ColourType a = (ColourType)1) noexcept
 					{
-						glColor4f(r, g, b, a);
+						addColour(static_cast<std::uint8_t>(r / 255.f), static_cast<std::uint8_t>(g / 255.f), static_cast<std::uint8_t>(b / 255.f), static_cast<std::uint8_t>(a / 255.f));
 					}
 
-					inline void addColour(const juce::Colour & c)
+					inline void addColour(const juce::Colour & c) noexcept
 					{
-						glColor4f(c.getFloatRed(), c.getFloatGreen(), c.getFloatBlue(), c.getFloatAlpha());
+						addColour(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 					}
 
 					template<cpl::GraphicsND::ComponentOrder order>
-					inline void addColour(cpl::GraphicsND::UPixel<order> colour)
+					inline void addColour(cpl::GraphicsND::UPixel<order> colour) noexcept
 					{
-						glColor4ub(colour.pixel.r, colour.pixel.g, colour.pixel.b, colour.pixel.a);
+						addColour(colour.pixel.r, colour.pixel.g, colour.pixel.b, colour.pixel.a);
+					}
+
+					inline void addColour(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a) noexcept
+					{
+						colourIndex &= vertexBufferSize - 1;
+
+						auto base = colourPointer + colourIndex * colourStride;
+
+						base[0] = r;
+						base[1] = g;
+						base[2] = b;
+						base[3] = a;
+
+						colourIndex++;
 					}
 
 					~PrimitiveDrawer()
 					{
-						rasterizeBuffer();
-						glEnd();
+						rasterizeBuffers();
+						glDisableClientState(GL_COLOR_ARRAY);
+						glDisableClientState(GL_VERTEX_ARRAY);
 					}
 
-					void rasterizeBuffer()
+					void rasterizeBuffers()
 					{
+						if (vertexIndex == 0)
+						{
+							colourIndex = 0;
+							return;
+						}
 
+						if (colourIndex != vertexIndex)
+						{
+							const auto currentIndex = ((colourIndex - 1) & (vertexBufferSize - 1)) * colourStride;
+							const auto r = colourPointer[currentIndex];
+							const auto g = colourPointer[currentIndex + 1];
+							const auto b = colourPointer[currentIndex + 2];
+							const auto a = colourPointer[currentIndex + 3];
 
+							for (; colourIndex < vertexIndex; ++colourIndex)
+							{
+								const auto index = colourPointer + colourIndex * colourStride;
+								colourPointer[currentIndex] = r;
+								colourPointer[currentIndex + 1] = g;
+								colourPointer[currentIndex + 2] = b;
+								colourPointer[currentIndex + 3] = a;
+							}
+						}
+
+						glColorPointer(4, GL_UNSIGNED_BYTE, 0, colourPointer);
+						glVertexPointer(3, GL_FLOAT, 0, vertexPointer);
+
+						glDrawArrays(primitive, 0, vertexIndex);
+
+						colourIndex = vertexIndex = 0;
 					}
 
 				protected:
-					std::size_t vertexPointer;
+					static constexpr std::size_t colourStride = 4;
+					static constexpr std::size_t vertexStride = 3;
+
+					GLFeatureType primitive;
+					std::size_t vertexIndex, colourIndex;
+					float * vertexPointer;
+					std::uint8_t * colourPointer;
+					typename std::aligned_storage<vertexBufferSize * sizeof(float) * 3, 32>::type vertices;
+					typename std::aligned_storage<vertexBufferSize * sizeof(char) * 4, 32>::type colours;
+
 					//CPL_ALIGNAS(32) Vertex vertices[vertexBufferSize * dimensions];
 				};
 
