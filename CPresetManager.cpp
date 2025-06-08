@@ -29,6 +29,7 @@
 #include "CPresetManager.h"
 #include "Misc.h"
 #include <vector>
+#include <memory>
 
 namespace cpl
 {
@@ -47,15 +48,15 @@ namespace cpl
 		return ::cpl::presetDirectory();
 	}
 
-	bool CPresetManager::savePresetAs(const ISerializerSystem & archive, juce::File & location, const std::string & uniqueExt)
+	void CPresetManager::savePresetAs(cpl::CCheckedSerializer archive, juce::File & location, const std::string & uniqueExt, FileSavedCallback callback)
 	{
 		// should we really save empty files?
 		if (archive.isEmpty())
-			return false;
+			return;
 
 		std::string extension = uniqueExt.length() ? uniqueExt + "." + programInfo.programAbbr : programInfo.programAbbr;
 
-		juce::FileChooser fileChooser(programInfo.name + ": Save preset to a file...",
+		std::shared_ptr<juce::FileChooser> fileChooser = std::make_shared<juce::FileChooser>(programInfo.name + ": Save preset to a file...",
 			juce::File(presetDirectory()),
 			#ifdef CPL_UNIXC
 			// native dialogs hangs programs on the distros I've tried
@@ -63,6 +64,16 @@ namespace cpl
 		#else
 			"*." + extension);
 		#endif
+
+		fileChooser->launchAsync(
+			juce::FileBrowserComponent::saveMode,
+
+			[fileChooser, callback](const juce::FileChooser&)
+			{
+
+				fileChooser.;
+			}
+		)
 
 		if (fileChooser.browseForFileToSave(true))
 		{
@@ -235,7 +246,6 @@ namespace cpl
 		while (iter.next())
 		{
 			currentPresets.push_back(iter.getFile());
-
 		}
 
 		return currentPresets;

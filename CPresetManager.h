@@ -34,6 +34,8 @@
 #include "CExclusiveFile.h"
 #include <vector>
 #include <string>
+#include <functional>
+#include <memory>
 
 namespace cpl
 {
@@ -41,11 +43,16 @@ namespace cpl
 	{
 	public:
 
+		typedef std::unique_ptr<juce::FileChooser> DialogState;
+
 		static CPresetManager & instance();
 
+		typedef std::function<void(const juce::File&)> FileSavedCallback;
+		typedef std::function<void(const juce::File&, const CCheckedSerializer&)> FileLoadedCallback;
+
 		// these functions pops up file selectors
-		bool savePresetAs(const ISerializerSystem & serializer, juce::File & location, const std::string & uniqueExt = "");
-		bool loadPresetAs(ISerializerSystem & serializer, juce::File & location, const std::string & uniqueExt = "");
+		DialogState savePresetAs(CCheckedSerializer archive, const std::string & uniqueExt = "", FileSavedCallback callback = {});
+		DialogState loadPresetAs(CCheckedSerializer builder, const std::string & uniqueExt = "", FileLoadedCallback whenDone = {});
 
 		// these functions saves/loads directly
 		bool savePreset(const std::string & name, const ISerializerSystem & serializer, juce::File & location);
