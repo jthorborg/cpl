@@ -54,7 +54,7 @@ namespace cpl
 		public juce::TextEditor::Listener,
 		public Utility::DestructionServer<CCtrlEditSpace>,
 		public juce::ChangeListener,
-		public juce::ButtonListener,
+		public juce::Button::Listener,
 		public CToolTipClient,
 		public DestructionNotifier
 	{

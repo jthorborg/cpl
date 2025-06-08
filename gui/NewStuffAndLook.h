@@ -664,7 +664,7 @@ namespace cpl
 	{
 	public:
 
-		static const size_t iconOffset = 3;
+		static const int iconOffset = 3;
 
 		virtual void paint(juce::Graphics & g) override
 		{

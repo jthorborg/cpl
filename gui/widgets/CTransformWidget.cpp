@@ -140,7 +140,7 @@ namespace cpl
 				}
 			}
 		}
-		return juce::String::empty;
+		return {};
 	}
 
 	void CTransformWidget::inputCommand(int x, int y, const String & data)

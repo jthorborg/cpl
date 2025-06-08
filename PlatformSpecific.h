@@ -41,6 +41,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#ifdef CPL_JUCE
+
+#include <juce_opengl/juce_opengl.h>
+
+namespace cpl
+{
+	using namespace juce::gl;
+}
+
+#else
+
+#include <gl/gl.h>
+#include <gl/glu.h>
+
+#endif
+
 #elif defined(CPL_UNIXC)
 
 #include <dlfcn.h>

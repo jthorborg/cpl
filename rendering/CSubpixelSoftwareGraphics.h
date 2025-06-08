@@ -53,7 +53,10 @@ namespace cpl
 			virtual ~CSubpixelSoftwareGraphics() {};
 
 			// overrides
-			virtual void drawGlyph(int glyphNumber, const AffineTransform & z) override;
+
+			void drawGlyphs(Span<const uint16_t> glyphs,
+				Span<const Point<float>> positions,
+				const AffineTransform& t) override;
 
 			// the height in points where to stop drawing subpixel aa-glyphs
 			static void setAntialiasingTransition(float heightToStopSubpixels);
@@ -61,6 +64,7 @@ namespace cpl
 		private:
 
 			bool tryToDrawGlyph(int glyphNumber, const AffineTransform & z);
+			bool RenderEdgeLayer(LCDMatrixOrientation monitorMatrix, const juce::Point<float>& pos, const juce::EdgeTable& outlines);
 			static float maxHeight;
 			Point<int> origin;
 			const juce::Image & buffer;

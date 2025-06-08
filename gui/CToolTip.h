@@ -62,7 +62,7 @@ namespace cpl
 
 		/** Returns the string that this object wants to show as its tooltip. */
 		virtual String bGetToolTip() const = 0;
-		virtual String bGetToolTipForChild(const Component *) const { return juce::String::empty; }
+		virtual String bGetToolTipForChild(const Component *) const { return {}; }
 	};
 
 	class CToolTipWindow : public Component,

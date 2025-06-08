@@ -349,17 +349,17 @@ namespace cpl
 		return createGraphicsContext(buffer, origin, clip);
 	}*/
 
-	juce::LowLevelGraphicsContext * CLookAndFeel_CPL::createGraphicsContext(
+	std::unique_ptr<juce::LowLevelGraphicsContext> CLookAndFeel_CPL::createGraphicsContext(
 		const Image &imageToRenderOn,
-		const Point< int > &origin,
+		Point<int> origin,
 		const RectangleList< int > &initialClip)
 	{
 		if (tryToRenderSubpixel/* && imageToRenderOn.getFormat() == imageToRenderOn.RGB*/)
 		{
-			return new rendering::CSubpixelSoftwareGraphics(imageToRenderOn, origin, initialClip);
+			return std::make_unique<rendering::CSubpixelSoftwareGraphics>(imageToRenderOn, origin, initialClip);
 		}
 
-		return new juce::LowLevelGraphicsSoftwareRenderer(imageToRenderOn, origin, initialClip);
+		return juce::LookAndFeel_V3::createGraphicsContext(imageToRenderOn, origin, initialClip);
 
 	}
 

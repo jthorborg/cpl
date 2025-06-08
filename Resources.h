@@ -51,7 +51,7 @@ namespace cpl
 	{
 		std::string path;
 		juce::Image internalImage;
-		juce::ScopedPointer<juce::Drawable> drawableImage;
+		std::unique_ptr<juce::Drawable> drawableImage;
 
 	public:
 		CImage(std::string inPath);
@@ -153,7 +153,7 @@ namespace cpl
 				resource->drawWithin(g, size.withPosition(0, 0).toFloat(), juce::RectanglePlacement::centred, opacity);
 				return image;
 			}
-			return juce::Image::null;
+			return {};
 		}
 
 		juce::Image & getImage() { return image; }

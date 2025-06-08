@@ -111,7 +111,7 @@ namespace cpl
 
 			janitorThreads();
 
-			CPL_RUNTIME_ASSERTION(threads.size() == 0);
+			CPL_RUNTIME_ASSERTION(threads.size() == 0); // TODO: This can happen and hang the process.
 		}
 
 	private:
