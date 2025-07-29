@@ -48,7 +48,7 @@ namespace cpl
 		static CPresetManager & instance();
 
 		typedef std::function<void(const juce::File&)> FileSavedCallback;
-		typedef std::function<void(const juce::File&, const CCheckedSerializer&)> FileLoadedCallback;
+		typedef std::function<void(const juce::File&, CCheckedSerializer&)> FileLoadedCallback;
 
 		// these functions pops up file selectors
 		DialogState savePresetAs(CCheckedSerializer archive, const std::string & uniqueExt = "", FileSavedCallback callback = {});

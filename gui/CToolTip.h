@@ -100,7 +100,7 @@ namespace cpl
 		void setMillisecondsBeforeTipAppears(int newTimeMs = 700) noexcept;
 
 		/** Can be called to manually force a tip to be shown at a particular location. */
-		void displayTip(Point<int> screenPosition, const String& text);
+		void displayTip(juce::Point<int> screenPosition, const String& text);
 
 		/** Can be called to manually hide the tip if it's showing. */
 		void hideTip();
@@ -135,7 +135,7 @@ namespace cpl
 	private:
 		//==============================================================================
 		int millisecondsBeforeTipAppears;
-		Point<int> lastMousePos;
+		juce::Point<int> lastMousePos;
 		int mouseClicks, mouseWheelMoves;
 		unsigned int lastCompChangeTime, lastHideTime;
 		Component* lastComponentUnderMouse;
@@ -144,7 +144,7 @@ namespace cpl
 		void paint(Graphics&) override;
 		void mouseEnter(const MouseEvent&) override;
 		void timerCallback() override;
-		void updatePosition(const String&, Point<int>, const juce::Rectangle<int>&);
+		void updatePosition(const String&, juce::Point<int>, const juce::Rectangle<int>&);
 
 		static String getTipFor(Component*);
 

@@ -131,7 +131,7 @@ namespace cpl
 		if (!image.load())
 		{
 			Misc::MsgBox(
-				"Error loading resource " + path + ":" + newl + GetLastOSErrorMessage() + newl + 
+				"Error loading resource " + path + ":\n" + GetLastOSErrorMessage() + "\n" + 
 				"Perhaps you didn't include the folder the plugin arrived in?", 
 				programInfo.name + " error!", 
 				Misc::MsgIcon::iStop

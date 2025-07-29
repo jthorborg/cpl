@@ -19,7 +19,12 @@
 #endif /* _MSC_VER */
 
 #include <math.h> /* sin() */
+#ifdef __x86_64__
 #include <emmintrin.h>
+#elif defined(__aarch64__) || defined(__arm64__)
+#define SIMDE_ENABLE_NATIVE_ALIASES
+#include "../external/simde/simde/x86/sse2.h"
+#endif
 #ifdef WIN32
 # define ALIGN16 __declspec(align(16))
 #else

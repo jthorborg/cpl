@@ -43,7 +43,7 @@
 		#endif
 	#endif
 
-	#if defined(_WIN64) || defined(__x86_64__) || defined(__x86_64)
+	#if defined(_WIN64) || defined(__x86_64__) || defined(__x86_64) || defined(__aarch64__) || defined(__arm64__)
 		typedef std::uint64_t XWORD;
 		#define CPL_M_64BIT 1
 		#define CPL_M_64BIT_ CPL_M_64BIT
@@ -100,6 +100,9 @@
 	#ifdef _MSC_VER
 		#define CPL_INTEL_ASSEMBLY
 		#define DBG_BREAK() DebugBreak();
+	#elif defined(__aarch64__) || defined(__arm64__)
+		#define CPL_ATT_ASSEMBLY
+		#define DBG_BREAK() __builtin_debugtrap()
 	#else
 		#define CPL_ATT_ASSEMBLY
 		#define DBG_BREAK() __asm__("int $0x3")

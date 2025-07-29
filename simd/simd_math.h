@@ -872,8 +872,11 @@ namespace cpl
 
 
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
+#ifdef __x86_64__
 				_mm256_zeroupper();
+#endif
+			}
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even
@@ -1100,8 +1103,11 @@ namespace cpl
 			VInt j = vdouble_cvt_int32(y + VConsts::one);
 
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
+#ifdef __x86_64__
 				_mm256_zeroupper();
+#endif
+			}
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even

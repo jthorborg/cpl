@@ -134,7 +134,7 @@ namespace cpl
 
 		void CSubpixelSoftwareGraphics::drawGlyphs(
 			juce::Span<const uint16_t> glyphs,
-			juce::Span<const Point<float>> positions,
+			juce::Span<const juce::Point<float>> positions,
 			const juce::AffineTransform& t)
 		{
 			using namespace juce;
@@ -164,7 +164,7 @@ namespace cpl
 			// obtain transform
 			auto & transform = stack->transform;
 			// starting point
-			Point<float> pos(z.getTranslationX(), z.getTranslationY());
+			juce::Point<float> pos(z.getTranslationX(), z.getTranslationY());
 
 			// find what display our glyph resides on.
 			// Note this is wrong - need to somehow figure out the global position

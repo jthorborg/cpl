@@ -172,7 +172,7 @@ namespace cpl
 
 			void createEmptyImage()
 			{
-				if (fillColour.getPixelARGB().getInRGBAMemoryOrder() == 0) // background colour is black.
+				if (fillColour.getPixelARGB().getInARGBMemoryOrder() == 0) // background colour is black.
 				{
 					juce::Image newContents(juceFormat, static_cast<int>(textureWidth), static_cast<int>(textureHeight), true);
 					loadImageInternal(newContents);
@@ -196,7 +196,7 @@ namespace cpl
 			void load()
 			{
 				loadImageInternal(currentContents);
-				currentContents = juce::Image::null;
+				currentContents = juce::Image();
 			}
 
 			/// <summary>
@@ -224,7 +224,7 @@ namespace cpl
 			/// </summary>
 			void release()
 			{
-				currentContents = juce::Image::null;
+				currentContents = juce::Image();
 				releaseTexture();
 			}
 

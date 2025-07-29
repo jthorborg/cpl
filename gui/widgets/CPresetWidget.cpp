@@ -73,27 +73,25 @@ namespace cpl
 			SerializerType serializer(name);
 			serializer.getArchiver().setMasterVersion(version);
 			parent->serializeObject(serializer.getArchiver(), serializer.getArchiver().getLocalVersion());
-			juce::File location;
-			bool result = CPresetManager::instance().savePresetAs(serializer, location, name);
-			// update list anyway; user may delete files in dialog etc.
-			updatePresetList();
-			if (result)
-			{
-				setDisplayedPreset(location);
-			}
+			auto dialog = CPresetManager::instance().savePresetAs(serializer, name, 
+				[this](const juce::File& savedFile) {
+					// update list anyway; user may delete files in dialog etc.
+					updatePresetList();
+					setDisplayedPreset(savedFile);
+				});
+			// Dialog is now handled asynchronously
 
 		}
 		else if (c == &kloadPreset)
 		{
 			SerializerType serializer(name);
-			juce::File location;
-			bool result = CPresetManager::instance().loadPresetAs(serializer, location, name);
-			updatePresetList();
-			if (result)
-			{
-				parent->deserializeObject(serializer.getBuilder(), serializer.getBuilder().getLocalVersion());
-				setDisplayedPreset(location);
-			}
+			auto dialog = CPresetManager::instance().loadPresetAs(serializer, name,
+				[this](const juce::File& loadedFile, CCheckedSerializer& loadedData) {
+					updatePresetList();
+					parent->deserializeObject(loadedData.getBuilder(), loadedData.getBuilder().getLocalVersion());
+					setDisplayedPreset(loadedFile);
+				});
+			// Dialog is now handled asynchronously
 		}
 		else if (c == &ksaveDefault)
 		{
