@@ -67,8 +67,16 @@ namespace cpl
 	#endif
 	namespace msdn
 	{
-		const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
+		InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
+		static std::once_flag cpu_rep_initialized;
 
+		InstructionSet::InstructionSet_Internal& InstructionSet::GetCPU_Rep()
+		{
+			std::call_once(cpu_rep_initialized, []() {
+				CPU_Rep = InstructionSet_Internal();
+			});
+			return CPU_Rep;
+		}
 	};
 
 }
