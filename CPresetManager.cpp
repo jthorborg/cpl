@@ -103,7 +103,8 @@ namespace cpl
 
 		return std::move(fileChooser);
 	}
-	CPresetManager::DialogState CPresetManager::loadPresetAs(CCheckedSerializer builder, const std::string & uniqueExt, FileLoadedCallback whenDone)
+	CPresetManager::DialogState CPresetManager::loadPresetAs(const std::string & uniqueExt, FileLoadedCallback whenDone)
+
 	{
 
 		std::string extension = uniqueExt.length() ? uniqueExt + "." + programInfo.programAbbr : programInfo.programAbbr;

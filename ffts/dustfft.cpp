@@ -23,7 +23,8 @@
 #include <emmintrin.h>
 #elif defined(__aarch64__) || defined(__arm64__)
 #define SIMDE_ENABLE_NATIVE_ALIASES
-#include "../external/simde/simde/x86/sse2.h"
+#include "../External/simde/simde/x86/sse2.h"
+
 #endif
 #ifdef WIN32
 # define ALIGN16 __declspec(align(16))

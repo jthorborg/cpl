@@ -428,8 +428,7 @@ namespace cpl
 				__asm__ volatile("mrs %0, cntvct_el0" : "=r" (val));
 				return val;
 			#else
-				// Fallback: Use clock_gettime or similar
-				return 0;
+				#error "Implement rdtsc for your platform"
 			#endif
 		}
 		#endif

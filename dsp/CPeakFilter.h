@@ -40,7 +40,8 @@
 #include <xmmintrin.h>
 #elif defined(__aarch64__) || defined(__arm64__)
 #define SIMDE_ENABLE_NATIVE_ALIASES
-#include "../external/simde/simde/x86/sse.h"
+#include "../External/simde/simde/x86/sse.h"
+
 #endif
 
 namespace cpl

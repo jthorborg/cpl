@@ -29,8 +29,7 @@ namespace cpl
 				CPUInfo[0] = CPUInfo[1] = CPUInfo[2] = CPUInfo[3] = 0;
 			}
 		#else
-			// Unknown architecture
-			CPUInfo[0] = CPUInfo[1] = CPUInfo[2] = CPUInfo[3] = 0;
+			#error "Unknown platform for CPUID"
 		#endif
 	}
 
