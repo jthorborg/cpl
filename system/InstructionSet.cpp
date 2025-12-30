@@ -1,4 +1,5 @@
 #include "InstructionSet.h"
+#if CPL_M_X86
 
 namespace cpl
 {
@@ -53,29 +54,22 @@ namespace cpl
 	}
 	#else
 
-	void cpuid(int CPUInfo[4], int InfoType)
-	{
-		return __cpuid(CPUInfo, InfoType);
-	};
-
-	void cpuidex(int CPUInfo[4], int InfoType, int SubFunctionID)
-	{
-		return __cpuidex(CPUInfo, InfoType, SubFunctionID);
-	};
-
 	#endif
 	namespace msdn
 	{
-		InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
-		static std::once_flag cpu_rep_initialized;
+		const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
-		InstructionSet::InstructionSet_Internal& InstructionSet::GetCPU_Rep()
+		void InstructionSet::cpuid(int CPUInfo[4], int InfoType)
 		{
-			std::call_once(cpu_rep_initialized, []() {
-				CPU_Rep = InstructionSet_Internal();
-			});
-			return CPU_Rep;
-		}
+			return __cpuid(CPUInfo, InfoType);
+		};
+
+		void InstructionSet::cpuidex(int CPUInfo[4], int InfoType, int SubFunctionID)
+		{
+			return __cpuidex(CPUInfo, InfoType, SubFunctionID);
+		};
 	};
 
 }
+
+#endif

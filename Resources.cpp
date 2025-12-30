@@ -119,25 +119,16 @@ namespace cpl
 		{
 			return &it->second;
 		}
-
-
-		auto loadStartTime = juce::Time::getMillisecondCounterHiRes();
-		
+	
 		std::string dir = Misc::DirectoryPath() + "/resources/";
-
 		std::string key { name };
 
 		auto & image = resources[key];
 		std::string path = (dir + key);
 		image.setPath(path);
-		
-		juce::Logger::writeToLog("Signalizer: Loading resource " + juce::String(path.c_str()));
-		
+			
 		if (!image.load())
 		{
-			auto loadTime = juce::Time::getMillisecondCounterHiRes() - loadStartTime;
-			juce::Logger::writeToLog("Signalizer: ERROR - Failed to load resource " + juce::String(path.c_str()) + " after " + juce::String(loadTime) + " ms");
-			
 			Misc::MsgBox(
 				"Error loading resource " + path + ":\n" + GetLastOSErrorMessage() + "\n" + 
 				"Perhaps you didn't include the folder the plugin arrived in?", 
@@ -147,9 +138,6 @@ namespace cpl
 			CPL_BREAKIFDEBUGGED();
 			return nullptr;
 		}
-		
-		auto loadTime = juce::Time::getMillisecondCounterHiRes() - loadStartTime;
-		juce::Logger::writeToLog("Signalizer: Successfully loaded resource " + juce::String(path.c_str()) + " in " + juce::String(loadTime) + " ms");
 
 		return &image;
 	}

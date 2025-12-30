@@ -36,13 +36,6 @@
 
 #include "../Mathext.h"
 #include "../Utility.h"
-#ifdef __x86_64__
-#include <xmmintrin.h>
-#elif defined(__aarch64__) || defined(__arm64__)
-#define SIMDE_ENABLE_NATIVE_ALIASES
-#include "../External/simde/simde/x86/sse.h"
-
-#endif
 
 namespace cpl
 {
