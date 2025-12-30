@@ -51,17 +51,16 @@ namespace cpl
 		typedef std::function<void(const juce::File&, CCheckedSerializer&)> FileLoadedCallback;
 
 		// these functions pops up file selectors
-		DialogState savePresetAs(CCheckedSerializer archive, const std::string & uniqueExt = "", FileSavedCallback callback = {});
-		DialogState loadPresetAs(CCheckedSerializer builder, const std::string & uniqueExt = "", FileLoadedCallback whenDone = {});
+		DialogState savePresetAs(const CCheckedSerializer& archive, FileSavedCallback callback);
+		DialogState loadPresetAs(CCheckedSerializer builder, FileLoadedCallback whenDone);
 
 		// these functions saves/loads directly
-		bool savePreset(const std::string & name, const ISerializerSystem & serializer, juce::File & location);
-		bool loadPreset(const std::string & name, ISerializerSystem & serializer, juce::File & location);
+		bool savePreset(cpl::string_ref path, const ISerializerSystem & serializer);
+		bool loadPreset(cpl::string_ref path, ISerializerSystem & serializer);
 		const std::vector<juce::File> & getPresets();
-		bool saveDefaultPreset(const ISerializerSystem & serializer, juce::File & location);
-		bool loadDefaultPreset(ISerializerSystem & serializer, juce::File & location);
+		bool saveDefaultPreset(const ISerializerSystem & serializer);
+		DialogState loadDefaultPreset(FileLoadedCallback whenDone);
 		std::string getPresetDirectory() const noexcept;
-		juce::File getCurrentPreset();
 
 	private:
 		std::vector<juce::File> currentPresets;

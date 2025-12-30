@@ -73,51 +73,51 @@ namespace cpl
 			SerializerType serializer(name);
 			serializer.getArchiver().setMasterVersion(version);
 			parent->serializeObject(serializer.getArchiver(), serializer.getArchiver().getLocalVersion());
-			auto dialog = CPresetManager::instance().savePresetAs(serializer, name, 
+			dialog = CPresetManager::instance().savePresetAs(serializer, 
 				[this](const juce::File& savedFile) {
 					// update list anyway; user may delete files in dialog etc.
 					updatePresetList();
 					setDisplayedPreset(savedFile);
-				});
-			// Dialog is now handled asynchronously
-
+				}
+			);
 		}
 		else if (c == &kloadPreset)
 		{
-			SerializerType serializer(name);
-			auto dialog = CPresetManager::instance().loadPresetAs(serializer, name,
+			dialog = CPresetManager::instance().loadPresetAs(name,
 				[this](const juce::File& loadedFile, CCheckedSerializer& loadedData) {
 					updatePresetList();
 					parent->deserializeObject(loadedData.getBuilder(), loadedData.getBuilder().getLocalVersion());
 					setDisplayedPreset(loadedFile);
-				});
-			// Dialog is now handled asynchronously
+				}
+			);
 		}
 		else if (c == &ksaveDefault)
 		{
 			SerializerType serializer(name);
 			serializer.getArchiver().setMasterVersion(version);
 			parent->serializeObject(serializer.getArchiver(), serializer.getArchiver().getLocalVersion());
-			juce::File location;
-			bool result = CPresetManager::instance().savePreset(fullPathToPreset("default"), serializer, location);
+			auto path = fullPathToPreset("default");
+			juce::File file(path);
+			bool result = CPresetManager::instance().savePreset(path, serializer);
 			// update list anyway; user may delete files in dialog etc.
 			updatePresetList();
 			if (result)
 			{
-				setDisplayedPreset(location);
+				setDisplayedPreset(file);
 			}
 
 		}
 		else if (c == &kloadDefault)
 		{
 			SerializerType serializer(name);
-			juce::File location;
-			bool result = CPresetManager::instance().loadPreset(fullPathToPreset("default"), serializer, location);
+			auto path = fullPathToPreset("default");
+			juce::File file(path);
+			bool result = CPresetManager::instance().loadPreset(path, serializer);
 			updatePresetList();
 			if (result)
 			{
 				parent->deserializeObject(serializer.getBuilder(), serializer.getBuilder().getLocalVersion());
-				setDisplayedPreset(location);
+				setDisplayedPreset(file);
 			}
 		}
 		else if (c == &kpresetList)
@@ -126,16 +126,15 @@ namespace cpl
 
 			if (presetName.size())
 			{
-				juce::File location;
+				auto path = fullPathToPreset(presetName);
+				juce::File file(path);				
 				SerializerType serializer(name);
-				if (CPresetManager::instance().loadPreset(fullPathToPreset(presetName), serializer, location))
+				if (CPresetManager::instance().loadPreset(fullPathToPreset(presetName), serializer))
 				{
 					parent->deserializeObject(serializer.getBuilder(), serializer.getBuilder().getLocalVersion());
-					setSelectedPreset(location);
+					setSelectedPreset(file);
 				}
 			}
-
-
 		}
 	}
 
