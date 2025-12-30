@@ -46,10 +46,8 @@
 	#if defined(__ARM_ARCH) || defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
 		#define CPL_ARCH "ARM"
 		#define CPL_M_ARM 1
-		#define CPL_M_X86 0
 	#else
 		#define CPL_ARCH "x86"
-		#define CPL_M_ARM 0
 		#define CPL_M_X86 1
 	#endif
 

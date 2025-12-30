@@ -19,6 +19,7 @@ namespace cpl
 		class InstructionSet
 		{
 #if CPL_M_ARM
+        public:
 			// getters
 			static constexpr std::string_view Vendor() { return "ARM"; }
 			static constexpr std::string_view Brand() { return "ARM64 Processor"; }
@@ -286,8 +287,8 @@ namespace cpl
 				std::bitset<32> f_81_EDX_;
 				std::vector<std::array<int, 4>> data_;
 				std::vector<std::array<int, 4>> extdata_;
-#endif
 			};
+#endif
 		};
 	};
 };
