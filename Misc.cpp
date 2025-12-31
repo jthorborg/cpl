@@ -411,20 +411,26 @@ namespace cpl
 
 		 *********************************************************************************************/
 		#ifndef CPL_MSVC
-		#ifdef CPL_M_64BIT_
 		__inline__ uint64_t __rdtsc() {
-			uint64_t a, d;
-			__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
-			return (d << 32) | a;
+			#if defined(__x86_64__) || defined(__i386__)
+				#ifdef CPL_M_64BIT_
+					uint64_t a, d;
+					__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+					return (d << 32) | a;
+				#else
+					uint64_t x;
+					__asm__ volatile ("rdtsc" : "=A" (x));
+					return x;
+				#endif
+			#elif defined(__aarch64__) || defined(__arm64__)
+				// ARM64: Use the system counter
+				uint64_t val;
+				__asm__ volatile("mrs %0, cntvct_el0" : "=r" (val));
+				return val;
+			#else
+				#error "Implement rdtsc for your platform"
+			#endif
 		}
-		#else
-		__inline__ uint64_t __rdtsc() {
-			uint64_t x;
-			__asm__ volatile ("rdtsc" : "=A" (x));
-			return x;
-		}
-		#endif
-
 		#endif
 		/*********************************************************************************************
 

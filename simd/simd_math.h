@@ -870,10 +870,12 @@ namespace cpl
 			// store the integer part of y in mm0
 			VInt j = vdouble_cvt_int32(y + VConsts::one);
 
-
+#ifdef CPL_M_X86
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
 				_mm256_zeroupper();
+			}
+#endif
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even
@@ -1099,9 +1101,12 @@ namespace cpl
 			// store the integer part of y in mm0
 			VInt j = vdouble_cvt_int32(y + VConsts::one);
 
+#ifdef CPL_M_X86
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
 				_mm256_zeroupper();
+			}
+#endif
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even

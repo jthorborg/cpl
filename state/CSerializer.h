@@ -1038,6 +1038,8 @@ namespace cpl
 			return internalSerializer.getContent("Content");
 		}
 
+		const std::string& getName() const { return nameReference; }
+
 	private:
 
 		CSerializer internalSerializer;

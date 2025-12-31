@@ -77,7 +77,7 @@ namespace cpl
 		hideTip();
 	}
 
-	void CToolTipWindow::updatePosition(const String& tip, Point<int> pos, const juce::Rectangle<int>& parentArea)
+	void CToolTipWindow::updatePosition(const String& tip, juce::Point<int> pos, const juce::Rectangle<int>& parentArea)
 	{
 		int w, h;
 		#if JUCE_MAJOR_VERSION >= 4
@@ -96,7 +96,7 @@ namespace cpl
 		setVisible(true);
 	}
 
-	void CToolTipWindow::displayTip(Point<int> screenPos, const String& tip)
+	void CToolTipWindow::displayTip(juce::Point<int> screenPos, const String& tip)
 	{
 		jassert(tip.isNotEmpty());
 		if (tipShowing != tip)
@@ -193,7 +193,7 @@ namespace cpl
 		mouseClicks = clickCount;
 		mouseWheelMoves = wheelCount;
 
-		const Point<int> mousePos(mouseSource.getScreenPosition().roundToInt());
+		const juce::Point<int> mousePos(mouseSource.getScreenPosition().roundToInt());
 		const bool mouseMovedQuickly = mousePos.getDistanceFrom(lastMousePos) > 12;
 		lastMousePos = mousePos;
 

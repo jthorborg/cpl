@@ -36,7 +36,6 @@
 
 #include "../Mathext.h"
 #include "../Utility.h"
-#include <xmmintrin.h>
 
 namespace cpl
 {

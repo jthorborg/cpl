@@ -74,8 +74,11 @@ namespace cpl
 #include <mach/mach_time.h>
 #include "MacSupport.h"
 #include <IOKit/graphics/IOGraphicsLib.h>
+
+#ifndef CPL_JUCE
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#endif
 
 #endif
 
@@ -86,7 +89,12 @@ namespace cpl
 #ifndef CPL_MSVC
 #include <cfenv>
 // find similar header (set fpoint mask) for non-mscv on windows
+#ifdef __x86_64__
 #include <xmmintrin.h>
+#elif defined(__aarch64__) || defined(__arm64__)
+#define SIMDE_ENABLE_NATIVE_ALIASES
+#include "external/simde/simde/x86/sse.h"
+#endif
 #endif
 
 #endif

@@ -4,3 +4,6 @@
 [submodule "external/filesystem"]
 	path = external/filesystem
 	url = https://github.com/gulrak/filesystem
+[submodule "external/simde"]
+	path = external/simde
+	url = https://github.com/simd-everywhere/simde

@@ -43,12 +43,21 @@
 		#endif
 	#endif
 
-	#if defined(_WIN64) || defined(__x86_64__) || defined(__x86_64)
+	#if defined(__ARM_ARCH) || defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
+		#define CPL_ARCH "ARM"
+		#define CPL_M_ARM 1
+	#else
+		#define CPL_ARCH "x86"
+		#define CPL_M_X86 1
+	#endif
+
+	#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__)
+
 		typedef std::uint64_t XWORD;
 		#define CPL_M_64BIT 1
 		#define CPL_M_64BIT_ CPL_M_64BIT
 
-		#define CPL_ARCH_STRING "64-bit"
+		#define CPL_ARCH_STRING "64-bit" CPL_ARCH
 	#else
 		#define __M_32BIT_
 		#define CPL_M_32BIT 1
@@ -56,7 +65,7 @@
 		#define CPL_M_32BIT_ CPL_M_32BIT
 
 		typedef std::uint32_t XWORD;
-		#define CPL_ARCH_STRING "32-bit"
+		#define CPL_ARCH_STRING "32-bit" CPL_ARCH
 	#endif
 
 	#if defined(_WIN32) || defined (_WIN64)
@@ -64,7 +73,7 @@
 		#define CPL_WINDOWS
 		#define CPL_PROG_EXTENSION ".dll"
 		#define CPL_DIR_SEP '\\'
-	#elif defined (__MACH__) && (__APPLE__)
+	#elif defined (__MACH__) || (__APPLE__)
 		#define CPL_DIR_SEP '/'
 		#define CPL_MAC
 		#include <AvailabilityMacros.h>
@@ -100,6 +109,9 @@
 	#ifdef _MSC_VER
 		#define CPL_INTEL_ASSEMBLY
 		#define DBG_BREAK() DebugBreak();
+	#elif defined(__aarch64__) || defined(__arm64__)
+		#define CPL_ATT_ASSEMBLY
+		#define DBG_BREAK() __builtin_debugtrap()
 	#else
 		#define CPL_ATT_ASSEMBLY
 		#define DBG_BREAK() __asm__("int $0x3")

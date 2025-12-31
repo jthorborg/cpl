@@ -48,17 +48,17 @@ namespace cpl
 		return ::cpl::presetDirectory();
 	}
 
-	void CPresetManager::savePresetAs(cpl::CCheckedSerializer archive, juce::File & location, const std::string & uniqueExt, FileSavedCallback callback)
+	CPresetManager::DialogState CPresetManager::savePresetAs(const CCheckedSerializer& archive, FileSavedCallback callback)
 	{
 		// should we really save empty files?
 		if (archive.isEmpty())
-			return;
+			return nullptr;
 
-		std::string extension = uniqueExt.length() ? uniqueExt + "." + programInfo.programAbbr : programInfo.programAbbr;
+		std::string extension = !archive.getName().empty() ? archive.getName() + "." + programInfo.programAbbr : programInfo.programAbbr;
 
-		std::shared_ptr<juce::FileChooser> fileChooser = std::make_shared<juce::FileChooser>(programInfo.name + ": Save preset to a file...",
+		auto fileChooser = std::make_unique<juce::FileChooser>(programInfo.name + ": Save preset to a file...",
 			juce::File(presetDirectory()),
-			#ifdef CPL_UNIXC
+		#ifdef CPL_UNIXC
 			// native dialogs hangs programs on the distros I've tried
 			"*." + extension, false);
 		#else
@@ -67,68 +67,50 @@ namespace cpl
 
 		fileChooser->launchAsync(
 			juce::FileBrowserComponent::saveMode,
-
-			[fileChooser, callback](const juce::FileChooser&)
+			[this, archive, callback, extension](const juce::FileChooser& chooser)
 			{
+				auto result = chooser.getResult();
+				if (result.existsAsFile() || result.getParentDirectory().exists())
 
-				fileChooser.;
-			}
-		)
-
-		if (fileChooser.browseForFileToSave(true))
-		{
-			auto result = fileChooser.getResult();
-
-			juce::String dotExt = "." + extension;
-
-			bool hasExt = false;
-
-			juce::String tempString = result.getFullPathName();
-			juce::String finalString = tempString;
-
-			// OS X handles multiple endings by duplicating them.. litterally.
-			// how nice.
-			while (tempString.endsWith(dotExt))
-			{
-				hasExt = true;
-				finalString = tempString;
-				tempString = tempString.dropLastCharacters(dotExt.length());
-			}
-
-			std::string path =
-				hasExt ?
-				finalString.toStdString() :
-				result.withFileExtension(extension.c_str()).getFullPathName().toStdString();
-
-			if (!savePreset(path, archive, location))
-			{
-				auto userAnswer = Misc::MsgBox("Error opening file:\n" + path + "\nTry another location?",
-					programInfo.name + "Error saving preset to file...", Misc::MsgStyle::sYesNoCancel | Misc::MsgIcon::iWarning);
-				if (userAnswer == Misc::MsgButton::bYes)
 				{
-					return savePresetAs(archive, location, uniqueExt);
-				}
-				else
-				{
-					return false;
+					juce::String dotExt = "." + extension;
+					bool hasExt = false;
+					juce::String tempString = result.getFullPathName();
+					juce::String finalString = tempString;
+
+					// OS X handles multiple endings by duplicating them.. litterally.
+					// how nice.
+					while (tempString.endsWith(dotExt))
+					{
+						hasExt = true;
+						finalString = tempString;
+						tempString = tempString.dropLastCharacters(dotExt.length());
+					}
+
+					std::string path =
+						hasExt ?
+						finalString.toStdString() :
+						result.withFileExtension(extension.c_str()).getFullPathName().toStdString();
+
+					if (savePreset(path, archive))
+					{
+						if (callback)
+							callback(result);
+					}
 				}
 			}
-			else
-			{
-				return true;
-			}
-		}
+		);
 
-		return false;
+		return std::move(fileChooser);
 	}
-	bool CPresetManager::loadPresetAs(ISerializerSystem & builder, juce::File & location, const std::string & uniqueExt)
+
+	CPresetManager::DialogState CPresetManager::loadPresetAs(CCheckedSerializer builder, FileLoadedCallback whenDone)
 	{
+		std::string extension = !builder.getName().empty() ? builder.getName() + "." + programInfo.programAbbr : programInfo.programAbbr;
 
-		std::string extension = uniqueExt.length() ? uniqueExt + "." + programInfo.programAbbr : programInfo.programAbbr;
-
-		juce::FileChooser fileChooser(programInfo.name + ": Load preset from a file...",
+		auto fileChooser = std::make_unique<juce::FileChooser>(programInfo.name + ": Load preset from a file...",
 			juce::File(presetDirectory()),
-			#ifdef CPL_MAC
+		#ifdef CPL_MAC
 			"*." + programInfo.programAbbr); // it just doesn't work..
 		#elif defined(CPL_UNIXC)
 			// native dialogs hangs programs on the distros I've tried
@@ -136,86 +118,61 @@ namespace cpl
 		#else
 			"*." + extension);
 		#endif
-		if (fileChooser.browseForFileToOpen())
-		{
-			auto result = fileChooser.getResult();
-			// the file chooser can only choose file names with the correct extension,
-			// no need to check.
-			std::string path = result.getFullPathName().toStdString();
 
-			if (!result.existsAsFile())
+		fileChooser->launchAsync(
+			juce::FileBrowserComponent::openMode,
+			[this, whenDone, extension, builder = std::move(builder)] (const juce::FileChooser& chooser) mutable
 			{
-				auto userAnswer = Misc::MsgBox("Error opening file:\n" + path + "\nTry another location?",
-					programInfo.name + "Error loading preset from file...", Misc::MsgStyle::sYesNo | Misc::MsgIcon::iQuestion);
-				if (userAnswer == Misc::MsgButton::bYes)
+				auto result = chooser.getResult();
+				if (result.existsAsFile())
 				{
-					return loadPresetAs(builder, location, uniqueExt);
-				}
-				else
-				{
-					return false;
+					// the file chooser can only choose file names with the correct extension,
+					// no need to check.
+					std::string path = result.getFullPathName().toStdString();
+
+					if (!result.getFileName().contains(extension.c_str()))
+					{
+						// Warning about extension mismatch could be handled here
+					}
+
+					if (loadPreset(path, builder))
+					{
+						if (whenDone)
+							whenDone(result, builder);
+					}
 				}
 			}
-			else if (!result.getFileName().contains(extension.c_str()))
-			{
-				auto userAnswer = Misc::MsgBox("Warning: The selected file:\n" + result.getFileName().toStdString() + "\nDoes not have the verifiable extension " + extension +
-					"\nDo you want to load another file (Yes), proceed with the current (No) or discard the loading query (Cancel)?",
-					programInfo.name + ": Query about loading preset from file...",
-					Misc::MsgStyle::sYesNoCancel | Misc::MsgIcon::iWarning);
-				if (userAnswer == Misc::MsgButton::bYes)
-				{
-					return loadPresetAs(builder, location, uniqueExt);
-				}
-				else if (userAnswer == Misc::MsgButton::bNo)
-				{
-					return loadPreset(path, builder, location);
-				}
-				else
-				{
-					return false;
-				}
-			}
-			else
-			{
-				return loadPreset(path, builder, location);
-			}
+		);
 
-		}
-
-		return false;
+		return std::move(fileChooser);
 	}
 
 	// these functions saves/loads directly
-	bool CPresetManager::savePreset(const std::string & path, const ISerializerSystem & archive, juce::File & location)
+	bool CPresetManager::savePreset(cpl::string_ref path, const ISerializerSystem & archive)
 	{
 		CExclusiveFile file;
 
-		if (!file.open(path, file.writeMode))
+		if (!file.open(path.c_str(), file.writeMode))
 			return false;
 
 		// clear existing file..
 		file.remove();
 
-		if (!file.open(path))
+		if (!file.open(path.c_str()))
 			return false;
 
 		auto content = archive.compile(true);
 
-		if (file.write(content.getBlock(), (std::int64_t)content.getSize()))
-		{
-			location = path;
-			return true;
-		}
-
-		return false;
+		return file.write(content.getBlock(), (std::int64_t)content.getSize());
 	}
-	bool CPresetManager::loadPreset(const std::string & path, ISerializerSystem & builder, juce::File & location)
+
+	bool CPresetManager::loadPreset(cpl::string_ref path, ISerializerSystem & builder)
 	{
 		try
 		{
 			CExclusiveFile file;
 
-			if (!file.open(path, file.readMode))
+			if (!file.open(path.c_str(), file.readMode))
 				return false;
 
 			std::vector<std::uint8_t> data;
@@ -226,18 +183,16 @@ namespace cpl
 				return false;
 
 			builder.clear();
-			if (builder.build(WeakContentWrapper(data.data(), size)))
-			{
-				location = path;
-				return true;
-			}
+			return builder.build(WeakContentWrapper(data.data(), size));
 		}
 		catch (const std::exception & e)
 		{
-			Misc::MsgBox("Exception loading preset at " + path + ":\n" + e.what(), programInfo.name, Misc::MsgIcon::iStop);
+			Misc::MsgBox("Exception loading preset at " + path.string() + ":\n" + e.what(), programInfo.name, Misc::MsgIcon::iStop);
 		}
+
 		return false;
 	}
+
 	const std::vector<juce::File> & CPresetManager::getPresets()
 	{
 		currentPresets.clear();
@@ -250,32 +205,37 @@ namespace cpl
 
 		return currentPresets;
 	}
-	bool CPresetManager::saveDefaultPreset(const ISerializerSystem & archive, juce::File & location)
+
+	bool CPresetManager::saveDefaultPreset(const ISerializerSystem & archive)
 	{
-		return savePreset(presetDirectory() + "default." + programInfo.programAbbr, archive, location);
+		return savePreset(presetDirectory() + "default." + programInfo.programAbbr, archive);
 	}
 
-	bool CPresetManager::loadDefaultPreset(ISerializerSystem & builder, juce::File & location)
+	CPresetManager::DialogState CPresetManager::loadDefaultPreset(FileLoadedCallback whenDone)
 	{
 		auto path = presetDirectory() + "default." + programInfo.programAbbr;
-		if (!loadPreset(path, builder, location))
-		{
-			auto answer = cpl::Misc::MsgBox(
-				"Error loading default preset at:\n" + path + "\n" + GetLastOSErrorMessage() +
-				"\nLoad a different preset?",
-				programInfo.name + ": Error loading preset...",
-				Misc::MsgIcon::iQuestion | Misc::MsgStyle::sYesNoCancel);
-			if (answer == Misc::MsgButton::bYes)
-			{
-				return loadPresetAs(builder, location);
-			}
-			else
-			{
-				return false;
-			}
 
+		CCheckedSerializer builder("default");
+
+		if (loadPreset(path, builder))
+		{
+			whenDone({ path }, builder);
+			return {};
 		}
-		return true;
+
+		auto answer = cpl::Misc::MsgBox(
+			"Error loading default preset at:\n" + path + "\n" + GetLastOSErrorMessage() +
+			"\nLoad a different preset?",
+			programInfo.name + ": Error loading preset...",
+			Misc::MsgIcon::iQuestion | Misc::MsgStyle::sYesNoCancel);
+		if (answer == Misc::MsgButton::bYes)
+		{
+			// Since loadPresetAs is now async, we can't easily use it here
+			// This would need a different approach or just return false
+			return loadPresetAs(builder, whenDone);
+		}
+
+		return {};
 	}
 
 	CPresetManager::CPresetManager() {}

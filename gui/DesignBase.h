@@ -119,7 +119,7 @@ namespace cpl
 		juce::Typeface::Ptr getTypefaceForFont(juce::Font const& font) override;
 		std::unique_ptr<juce::LowLevelGraphicsContext> createGraphicsContext(
 			const Image& imageToRenderOn,
-			Point<int> origin,
+			juce::Point<int> origin,
 			const RectangleList<int>& initialClip) override;
 
 		juce::Font getPopupMenuFont() override;

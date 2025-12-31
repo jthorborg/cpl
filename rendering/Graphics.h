@@ -31,7 +31,24 @@
 #define CPL_GRAPHICS_H
 
 #include <cstdint>
+#include <algorithm>
+#include <limits>
+#include <type_traits>
 #include "../PlatformSpecific.h"
+
+#ifdef CPL_JUCE
+	#include <juce_opengl/juce_opengl.h>
+	using namespace juce::gl;
+#else
+	#ifdef __APPLE__
+		#define GL_SILENCE_DEPRECATION
+		#include <OpenGL/gl.h>
+		#include <OpenGL/glu.h>
+	#else
+		#include <GL/gl.h>
+		#include <GL/glu.h>
+	#endif
+#endif
 
 namespace cpl
 {
@@ -442,10 +459,10 @@ namespace cpl
 			{
 				UPixel ret(*this);
 
-				ret.a = std::uint8_t(scale * ret.a);
-				ret.r = std::uint8_t(scale * ret.r);
-				ret.g = std::uint8_t(scale * ret.g);
-				ret.b = std::uint8_t(scale * ret.b);
+				ret.pixel.a = static_cast<ComponentType>(scale * ret.pixel.a);
+				ret.pixel.r = static_cast<ComponentType>(scale * ret.pixel.r);
+				ret.pixel.g = static_cast<ComponentType>(scale * ret.pixel.g);
+				ret.pixel.b = static_cast<ComponentType>(scale * ret.pixel.b);
 
 				return ret;
 			}

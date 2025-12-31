@@ -31,6 +31,9 @@
 // but all hell breaks loose if this is not here.
 //#define Point CarbonDummyPointName
 
+// Include JUCE headers first to avoid OpenGL conflicts
+#include "Common.h"
+
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/NSString.h>
 #import <AppKit/NSPanel.h>
@@ -43,7 +46,6 @@
 #include "Exceptions.h"
 
 #include <string.h>
-#include "Common.h"
 /*********************************************************************************************
  
 	Spawns a messagebox using NSRunAlertPanel

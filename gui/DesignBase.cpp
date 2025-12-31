@@ -343,7 +343,7 @@ namespace cpl
 	}
 	/*
 	virtual juce::LowLevelGraphicsContext * LookAndFeel::createGraphicsContextAdvanced(
-		const Image & buffer, const Point<int> origin, const RectangleList<int> clip, bool isScreenContext, const Point<int> componentPosition)
+		const Image & buffer, const juce::Point<int> origin, const RectangleList<int> clip, bool isScreenContext, const juce::Point<int> componentPosition)
 	{
 		// default implementation just forwards:
 		return createGraphicsContext(buffer, origin, clip);
@@ -351,7 +351,7 @@ namespace cpl
 
 	std::unique_ptr<juce::LowLevelGraphicsContext> CLookAndFeel_CPL::createGraphicsContext(
 		const Image &imageToRenderOn,
-		Point<int> origin,
+		juce::Point<int> origin,
 		const RectangleList< int > &initialClip)
 	{
 		if (tryToRenderSubpixel/* && imageToRenderOn.getFormat() == imageToRenderOn.RGB*/)
