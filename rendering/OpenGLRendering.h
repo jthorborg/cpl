@@ -246,7 +246,11 @@ namespace cpl
 			friend class Rasterizer;
 
 			COpenGLStack()
-				: ras(nullptr), blenderWasAltered(false)
+				: ras(nullptr)
+				, blenderWasAltered(false)
+				, oldDestinationBlend()
+				, oldSourceBlend()
+
 			{
 				CPL_DEBUGCHECKGL();
 

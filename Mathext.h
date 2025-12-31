@@ -70,9 +70,10 @@ namespace cpl
 
 		CBoxFilter() : buf(), ptr(0) {};
 
-		void setNext(scalar input)
+		template<typename TInput>
+		void setNext(TInput input)
 		{
-			buf[ptr] = input;
+			buf[ptr] = static_cast<T>(input);
 			ptr++;
 			ptr %= size;
 		}

@@ -73,9 +73,12 @@ namespace cpl
 			virtual bool format(const ValueType & val, std::string & buf) override
 			{
 				char buffer[1000];
-				sprintfs(buffer, u8"%d dB (%.1f\u03B1)", int(std::round(val)), val / 20);
-				buf = buffer;
-				return true;
+				if (sprintfs(buffer, u8"%d dB (%.1f\u03B1)", int(std::round(val)), val / 20) > 0)
+				{
+					buf = buffer;
+					return true;
+				}
+				return false;
 			}
 		};
 

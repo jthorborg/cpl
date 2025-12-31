@@ -181,40 +181,44 @@ namespace cpl
 			void generalizedCosineSequence(InOutVector & v, LengthType N, Shape symmetry, T a0, T a1)
 			{
 				T K = T(symmetry == Shape::Periodic ? N : N - 1);
-				T offset = symmetry == Shape::DFTEven ? T(M_PI / K) : 0;
+				const auto piK = T(M_PI / K);
+				T offset = symmetry == Shape::DFTEven ? piK : 0;
 				T scale = 1 / (a0 + a1);
 				for (std::size_t n = 0; n < N; ++n)
-					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * M_PI / K));
+					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * piK));
 			}
 
 			template<typename T, typename LengthType, typename InOutVector>
 			void generalizedCosineSequence(InOutVector & v, LengthType N, Shape symmetry, T a0, T a1, T a2)
 			{
 				T K = T(symmetry == Shape::Periodic ? N : N - 1);
-				T offset = symmetry == Shape::DFTEven ? T(M_PI / K) : 0;
+				const auto piK = T(M_PI / K);
+				T offset = symmetry == Shape::DFTEven ? piK : 0;
 				T scale = 1 / (a0 + a1 + a2);
 				for (std::size_t n = 0; n < N; ++n)
-					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * M_PI / K) + a2 * std::cos(offset + n * 4 * M_PI / K));
+					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * piK) + a2 * std::cos(offset + n * 4 * piK));
 			}
 
 			template<typename T, typename LengthType, typename InOutVector>
 			void generalizedCosineSequence(InOutVector & v, LengthType N, Shape symmetry, T a0, T a1, T a2, T a3)
 			{
 				T K = T(symmetry == Shape::Periodic ? N : N - 1);
-				T offset = symmetry == Shape::DFTEven ? T(M_PI / K) : 0;
+				const auto piK = T(M_PI / K);
+				T offset = symmetry == Shape::DFTEven ? piK : 0;
 				T scale = 1 / (a0 + a1 + a2 + a3);
 				for (std::size_t n = 0; n < N; ++n)
-					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * M_PI / K) + a2 * std::cos(offset + n * 4 * M_PI / K) - a3 * std::cos(offset + n * 6 * M_PI / K));
+					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * piK) + a2 * std::cos(offset + n * 4 * piK) - a3 * std::cos(offset + n * 6 * piK));
 			}
 
 			template<typename T, typename LengthType, typename InOutVector>
 			void generalizedCosineSequence(InOutVector & v, LengthType N, Shape symmetry, T a0, T a1, T a2, T a3, T a4)
 			{
 				T K = T(symmetry == Shape::Periodic ? N : N - 1);
-				T offset = symmetry == Shape::DFTEven ? T(M_PI / K) : 0;
+				const auto piK = T(M_PI / K);
+				T offset = symmetry == Shape::DFTEven ? piK : 0;
 				T scale = 1 / (a0 + a1 + a2 + a3 + a4);
 				for (std::size_t n = 0; n < N; ++n)
-					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * M_PI / K) + a2 * std::cos(offset + n * 4 * M_PI / K) - a3 * std::cos(offset + n * 6 * M_PI / K) + a4 * std::cos(offset + n * 8 * M_PI / K));
+					v[n] = scale * (a0 - a1 * std::cos(offset + n * 2 * piK) + a2 * std::cos(offset + n * 4 * piK) - a3 * std::cos(offset + n * 6 * piK) + a4 * std::cos(offset + n * 8 * piK));
 			}
 
 			template<>
@@ -630,7 +634,7 @@ namespace cpl
 					T K = T(symmetry == Shape::Periodic ? N : N - 1);
 					T offset = symmetry == Shape::DFTEven ? (T)(0.5 / K) : 0;
 					for (std::size_t n = 0; n < N; ++n)
-						w[n] = std::exp(-0.5 * cpl::Math::square((((n + offset) - K * 0.5) / (beta * N * 0.5))));
+						w[n] = std::exp(T(-0.5) * cpl::Math::square((((n + offset) - K * T(0.5)) / (beta * N * T(0.5)))));
 				}
 
 				template<typename T, class InOutVector>
@@ -715,7 +719,7 @@ namespace cpl
 					T rtau = 1 / (T(N * 0.5) * (T)8.69 / alpha);
 
 					for (std::size_t n = 0; n < N; ++n)
-						w[n] = std::exp(-rtau * std::abs((n + offset) - K * 0.5));
+						w[n] = std::exp(-rtau * std::abs((n + offset) - K * T(0.5)));
 				}
 
 				template<typename T, class InOutVector>

@@ -62,7 +62,6 @@ namespace cpl
 		int addHandlers();
 
 		static std::string GetDirectoryPath();
-		static int GetInstanceCounter();
 		static int __unusedInitialization = addHandlers();
 		static std::atomic<std::terminate_handler> oldTerminate;
 

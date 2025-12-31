@@ -220,16 +220,11 @@ namespace cpl
 				move constructor - c++11 delete ?
 			*/
 		private:
-			#ifdef __CPP11__
 			CNoncopyable(const CNoncopyable & other) = delete;
 			CNoncopyable & operator=(const CNoncopyable & other) = delete;
 
 			CNoncopyable & operator=(CNoncopyable && other) = delete;
 			CNoncopyable(CNoncopyable && other) = delete;
-			#else
-			CNoncopyable(const CNoncopyable & other);
-			CNoncopyable & operator=(const CNoncopyable & other);
-			#endif
 		};
 
 		class CPubliclyNoncopyable
@@ -238,16 +233,11 @@ namespace cpl
 		protected:
 			CPubliclyNoncopyable() {}
 			~CPubliclyNoncopyable() {}
-			#ifdef __CPP11__
 			CPubliclyNoncopyable(const CPubliclyNoncopyable & other) = default;
 			CPubliclyNoncopyable & operator=(const CPubliclyNoncopyable & other) = default;
 
 			CPubliclyNoncopyable & operator=(CPubliclyNoncopyable && other) = default;
 			CPubliclyNoncopyable(CPubliclyNoncopyable && other) = default;
-			#else
-			CPubliclyNoncopyable(const CPubliclyNoncopyable & other);
-			CPubliclyNoncopyable & operator=(const CPubliclyNoncopyable & other);
-			#endif
 		};
 
 		class COnlyPubliclyMovable
@@ -256,15 +246,14 @@ namespace cpl
 		protected:
 			COnlyPubliclyMovable() {}
 			~COnlyPubliclyMovable() {}
-			#ifdef __CPP11__
+
 			COnlyPubliclyMovable(const COnlyPubliclyMovable & other) = default;
 			COnlyPubliclyMovable & operator=(const COnlyPubliclyMovable & other) = default;
-			#else
-			COnlyPubliclyMovable(const COnlyPubliclyMovable & other);
-			COnlyPubliclyMovable & operator=(const COnlyPubliclyMovable & other);
-			#endif
 		};
 
+#ifdef _MSC_VER
+#pragma warning(disable:26495)
+#endif
 
 		template<class T>
 		struct LazyStackPointer : CNoncopyable
@@ -316,6 +305,9 @@ namespace cpl
 			typename std::aligned_storage<sizeof(T), alignof(T)>::type storage;
 		};
 
+#ifdef _MSC_VER
+#pragma warning(default:26495)
+#endif
 
 		template<class func>
 		struct OnScopeExit

@@ -58,6 +58,7 @@ namespace cpl
 		typedef decltype(cpl::Misc::ClockCounter()) cclock_t;
 
 		CProcessorTimer()
+			: deltaT(), startT()
 		{
 		}
 

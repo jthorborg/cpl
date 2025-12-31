@@ -60,12 +60,12 @@ namespace cpl
 					glPushMatrix();
 
 					glTranslatef(-1, -1, 0);
-					glScalef(2.0 / (image.width), 2.0 / (image.height), 1.0);
+					glScalef(2.0f / (image.width), 2.0f / (image.height), 1.0f);
 
 					glGetIntegerv(GL_MATRIX_MODE, &matrixMode);
 					glMatrixMode(GL_TEXTURE);
 					glPushMatrix();
-					glScalef(1.0 / image.textureWidth, 1.0 / image.textureHeight, 1.0);
+					glScalef(1.0f / image.textureWidth, 1.0f / image.textureHeight, 1.0f);
 
 
 					img.bind();
@@ -296,7 +296,7 @@ namespace cpl
 				auto sourceHeight = sourceBot - sourceTop;
 
 
-				auto r = [](double in) { return cpl::Math::round<int, double>(in); };
+				auto r = [](auto in) { return cpl::Math::round<int, double>(static_cast<double>(in)); };
 				juce::Image upload(juceFormat, static_cast<int>(width), static_cast<int>(height), false);
 				{
 					juce::Graphics g(upload);

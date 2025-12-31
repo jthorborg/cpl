@@ -58,7 +58,7 @@ namespace octave
 				T c = 1 - 1 / (xmu * xmu), t, u, v[64], vp, s;
 				for (i = 0; i < (int)(sizeof(v) / sizeof(v[0])); v[i++] = 0);
 				if (n > 1) for (i = 0; i < m; l = j - (j <= i++)) {
-				  vp = *v, s = *v = i? (*v + v[1]) * mu * (divs[i] = (T)1/i) : 1;
+				  vp = *v, s = *v = i? (*v + v[1]) * mu * (divs[i] = (TOut)1/i) : 1;
 				  for (met = 0, j = 1, u = 1; ; ++l, v[l] = vp * (i - l) / (mu + l - 1)) {
 					#define _ t = v[j], v[j] += vp, vp = t, t = s, s += \
 						v[j] * (u *= c * (n - i - j) * divs[j]), met = s && s == t, ++j,
@@ -67,11 +67,11 @@ namespace octave
 					#undef _
 					if (met || !(j <= i)) break;
 				  }
-				  w[i] = s / (n - i - 1);
+				  w[i] = static_cast<TOut>(s / (n - i - 1));
 				}
 				else w[0] = 1;
 				u = 1 / w[i = m - 1], w[i] = 1;
-				for (--i ; i >= 0; u *= (n - 2 - i + mu) / (n - 2 - i), w[i] *= u, --i);
+				for (--i ; i >= 0; u *= (n - 2 - i + mu) / (n - 2 - i), w[i] = static_cast<TOut>(w[i] * u), --i);
 				for (i = 0; i < m; w[n - 1 - i] = w[i], ++i);
 			  }
 			}

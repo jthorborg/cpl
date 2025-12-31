@@ -297,13 +297,14 @@ namespace cpl
 
 		}
 
-		const char * getBlock() const { return static_cast<const char*>(contents.get()); }
-		std::size_t getSize() const { return contentSize; }
-		ContentWrapper(ContentWrapper && cw)
+		ContentWrapper(ContentWrapper&& cw) noexcept
 			: contents(cw.contents.release()), contentSize(cw.contentSize)
 		{
 
 		}
+
+		const char * getBlock() const { return static_cast<const char*>(contents.get()); }
+		std::size_t getSize() const { return contentSize; }
 
 	private:
 		std::unique_ptr<char[]> contents;
@@ -531,7 +532,7 @@ namespace cpl
 		class Key
 		{
 		public:
-			explicit Key(const KeyHeader * kh);
+			explicit Key(const KeyHeader* kh) = delete;
 			Key(const std::string & s) : isString(true), intKey(0), stringKey(s) {};
 			Key(const char * s) : isString(true), intKey(0), stringKey(s) {};
 			Key(long long ID) : isString(false), intKey(ID) {};

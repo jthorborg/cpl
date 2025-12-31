@@ -208,7 +208,7 @@ namespace cpl
 
             for (std::size_t i = 0; i < workers; ++i)
             {
-                threads.emplace_back(&JobSystem::entry, this, i);
+                threads.emplace_back(&JobSystem::entry, this, static_cast<int>(i));
             }
 
             cv.notify_all();

@@ -232,35 +232,35 @@ namespace cpl
 		typename std::enable_if<precise, double>::type
 			lzresponse(double x, int size)
 		{
-			return x ? (size * sin(M_PI * x) * sin(M_PI * x / size)) / (M_PI * M_PI * x * x) : 1;
+			return x ? (size * sin(simd::consts<double>::pi * x) * sin(simd::consts<double>::pi * x / size)) / (simd::consts<double>::tau * x * x) : 1;
 		}
 
 		template<bool precise>
 		typename std::enable_if<precise, float>::type
 			lzresponse(float x, int size)
 		{
-			return x ? (size * sinf(M_PI * x) * sinf(M_PI * x / size)) / (M_PI * M_PI * x * x) : 1;
+			return x ? (size * sinf(simd::consts<float>::pi * x) * sinf(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
 		}
 
 		template<bool precise>
 		typename std::enable_if<precise, double>::type
 			scresponse(double x)
 		{
-			return x ? (sin(M_PI * x)) / (M_PI * x) : 1;
+			return x ? (sin(simd::consts<double>::pi * x)) / (simd::consts<double>::pi * x) : 1;
 		}
 
 		template<typename T, bool precise>
 		typename std::enable_if<!precise, double>::type
 			lzresponse(double x, int size)
 		{
-			return x ? (size * cpl::Math::fastsine(M_PI * x) * cpl::Math::fastsine(M_PI * x / size)) / (TAU * x * x) : 1;
+			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
 		}
 
 		template<typename T, bool precise>
 		typename std::enable_if<!precise, float>::type
 			lzresponse(float x, int size)
 		{
-			return x ? (size * cpl::Math::fastsine(M_PI * x) * cpl::Math::fastsine(M_PI * x / size)) / (TAU * x * x) : 1;
+			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
 		}
 
 		template<typename R, bool precise = true, typename T>
@@ -325,7 +325,7 @@ namespace cpl
 		inline auto lanczosFilter(T* vec, Types::fsint_t asize, Y x, Types::fsint_t wsize) -> typename std::remove_reference<decltype(vec[0])>::type
 		{
 			R resonance = 0;
-			Types::fsint_t start = cpl::Math::floorToNInf<Types::fsint_t>(x);
+			const auto start = cpl::Math::floorToNInf<Types::fsint_t>(x);
 			for (Types::fsint_t i = start - wsize + 1; i < (start + wsize + 1); ++i)
 			{
 				if (i >= 0 && i < asize)
@@ -351,7 +351,7 @@ namespace cpl
 				{
 					auto impulse = vec[i];
 					auto response = lzresponse<precise>(x - i, wsize);
-					resonance += impulse * response;
+					resonance += static_cast<R>(impulse * response);
 				}
 			}
 			return resonance;
@@ -368,7 +368,7 @@ namespace cpl
 				{
 					auto impulse = vec[i];
 					auto response = scresponse<precise>(x - i);
-					resonance += impulse * response;
+					resonance += static_cast<R>(impulse * response);
 				}
 			}
 			return resonance;

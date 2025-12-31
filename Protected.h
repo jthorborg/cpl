@@ -176,7 +176,6 @@ namespace cpl
 			Utility::LazyStackPointer<std::stringstream> stream;
 		};
 
-		static void useFPUExceptions(bool b);
 		static std::string formatExceptionMessage(const CSystemException &);
 
 		static CProtected & instance();
@@ -388,6 +387,7 @@ namespace cpl
 			};
 
 			CSystemException()
+				: data(Storage::create())
 			{
 
 			}

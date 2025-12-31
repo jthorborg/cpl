@@ -269,6 +269,7 @@ namespace cpl
 						memcpy(brand, extdata_[2].data(), sizeof(cpui));
 						memcpy(brand + 16, extdata_[3].data(), sizeof(cpui));
 						memcpy(brand + 32, extdata_[4].data(), sizeof(cpui));
+						brand[sizeof(brand) - 1] = '\0';
 						brand_ = brand;
 					}
 				};
