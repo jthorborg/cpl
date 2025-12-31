@@ -35,12 +35,12 @@
 #include <cstdint>
 #include <errno.h>
 #include "PlatformSpecific.h"
-// Use SIMDE for cross-platform SIMD compatibility
-#ifdef __x86_64__
+#ifdef CPL_M_X86
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <xmmintrin.h>
 #else
+// Use SIMDE for cross-platform SIMD compatibility
 // Enable native type aliases for SIMDE on ARM64
 #define SIMDE_ENABLE_NATIVE_ALIASES
 #include "External/simde/simde/x86/mmx.h"
