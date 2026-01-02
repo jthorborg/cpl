@@ -65,7 +65,7 @@ namespace cpl
 			std::int64_t ret;
 			if (cpl::lexicalConversion(buf, ret))
 			{
-				val = ret;
+				val = static_cast<T>(ret);
 				return true;
 			}
 

@@ -238,7 +238,7 @@ namespace octave
 			T t = 0, s = -1;
 			x = x? (T)M_PI/2 - std::acos(x/xmu) : 0;
 			for (; i >= 0; t += w[i] * (T)1. / (j + 1) * (s=-s) * (x?cos(j*x):1), --i, j += 2);
-			for (t = (T)M_PI/4 / t, i = 0; t < 1 && i < n; w[i] *= t, ++i);
+			for (t = (T)M_PI/4 / t, i = 0; t < 1 && i < n; w[i] = TOut(w[i] * t), ++i);
 		#if DEBUG_ULTRWIN
 			fprintf(stderr, "%snorm DFT(w.sinc πx) @ %g %.16g\n", t<1? "":"NO ", 2*x,t);
 		#endif

@@ -738,14 +738,15 @@ namespace cpl
 				template<typename T, class InOutVector>
 				static void generate(InOutVector & w, std::size_t N, Shape symmetry = Shape::Symmetric, T alpha = T(), T beta = T())
 				{
+					using consts = simd::consts<T>;
 					if (N == 0)
 						return;
 					T K = T(symmetry == Shape::Periodic ? N : N - 1);
-					T offset = symmetry == Shape::DFTEven ? (T)(0.5 / K) : 0;
-					T rtau = 1 / (T(N * 0.5) * (T)8.69 / alpha);
+					T offset = symmetry == Shape::DFTEven ? consts::half / K : 0;
+					T rtau = 1 / (N * consts::half * (T)8.69 / alpha);
 
 					for (std::size_t n = 0; n < N; ++n)
-						w[n] = ((T)0.5 - (T)0.5 * std::cos(offset + n * 2 * M_PI / K)) * std::exp(-rtau * std::abs((n + offset) - K * (T)0.5));
+						w[n] = (consts::half - consts::half * std::cos(offset + n * consts::tau / K)) * std::exp(-rtau * std::abs((n + offset) - K * consts::half));
 				}
 
 				template<typename T, class InOutVector>
@@ -764,13 +765,15 @@ namespace cpl
 				template<typename T, class InOutVector>
 				static void generate(InOutVector & w, std::size_t N, Shape symmetry = Shape::Symmetric, T alpha = T(), T beta = T())
 				{
+					using consts = simd::consts<T>;
+
 					if (N == 0)
 						return;
 					T K = T(symmetry == Shape::Periodic ? N : N - 1);
-					T offset = symmetry == Shape::DFTEven ? (T)(0.5 / K) : 0;
+					T offset = symmetry == Shape::DFTEven ? consts::half / K : 0;
 
 					for (std::size_t n = 0; n < N; ++n)
-						w[n] = scresponse<true>((offset + (T)2 * n / K) - 1);
+						w[n] = scresponse<true>((offset + consts::two * n / K) - 1);
 				}
 
 				template<typename T, class InOutVector>
