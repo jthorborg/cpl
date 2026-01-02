@@ -232,14 +232,14 @@ namespace cpl
 		typename std::enable_if<precise, double>::type
 			lzresponse(double x, int size)
 		{
-			return x ? (size * sin(simd::consts<double>::pi * x) * sin(simd::consts<double>::pi * x / size)) / (simd::consts<double>::tau * x * x) : 1;
+			return x ? (size * sin(simd::consts<double>::pi * x) * sin(simd::consts<double>::pi * x / size)) / (simd::consts<double>::pi_squared * x * x) : 1;
 		}
 
 		template<bool precise>
 		typename std::enable_if<precise, float>::type
 			lzresponse(float x, int size)
 		{
-			return x ? (size * sinf(simd::consts<float>::pi * x) * sinf(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
+			return x ? (size * sinf(simd::consts<float>::pi * x) * sinf(simd::consts<float>::pi * x / size)) / (simd::consts<float>::pi_squared * x * x) : 1;
 		}
 
 		template<bool precise>
@@ -260,14 +260,14 @@ namespace cpl
 		typename std::enable_if<!precise, double>::type
 			lzresponse(double x, int size)
 		{
-			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
+			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::pi_squared * x * x) : 1;
 		}
 
 		template<typename T, bool precise>
 		typename std::enable_if<!precise, float>::type
 			lzresponse(float x, int size)
 		{
-			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::tau * x * x) : 1;
+			return x ? (size * cpl::Math::fastsine(simd::consts<float>::pi * x) * cpl::Math::fastsine(simd::consts<float>::pi * x / size)) / (simd::consts<float>::pi_squared * x * x) : 1;
 		}
 
 
