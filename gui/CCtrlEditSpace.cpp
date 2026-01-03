@@ -220,10 +220,6 @@ namespace cpl
 	}
 	void CCtrlEditSpace::editorShown(Label * curLabel, TextEditor & editor)
 	{
-		if (curLabel == &fmtValueLabel)
-			editor.addListener(this);
-		if (curLabel == &intValueLabel)
-			editor.addListener(this);
 		editor.setScrollToShowCursor(false);
 
 	}
@@ -294,28 +290,28 @@ namespace cpl
 		}
 	}
 
-	void CCtrlEditSpace::textEditorReturnKeyPressed(TextEditor & editor)
+	void CCtrlEditSpace::labelTextChanged(juce::Label* labelThatHasChanged)
 	{
-		if (&editor == fmtValueLabel.getCurrentTextEditor())
+		if (labelThatHasChanged == &fmtValueLabel)
 		{
 			// this is where we try to interpret a formatted value
 			// to an internal range.
 
 			// note: we use the value from the editor, because the label may not
 			// have been updated yet.
-			if ((inputValueWasValid = interpretAndSet(editor.getText().toStdString())))
+			if ((inputValueWasValid = interpretAndSet(fmtValueLabel.getText().toStdString())))
 			{
 				animateSucces(&fmtValueLabel);
 			}
 			else
 				animateError(&fmtValueLabel);
 		}
-		else if (&editor == intValueLabel.getCurrentTextEditor())
+		else if (labelThatHasChanged == &intValueLabel)
 		{
 			// here we try to map an input string to [0, 1] range.
 			// the cbasecontrol provides a static method for this
 			iCtrlPrec_t val(0);
-			auto succes = CBaseControl::bMapStringToInternal(editor.getText().toStdString(), val);
+			auto succes = CBaseControl::bMapStringToInternal(fmtValueLabel.getText().toStdString(), val);
 
 
 			if (succes)
@@ -460,16 +456,6 @@ namespace cpl
 	CBaseControl * CCtrlEditSpace::getBaseControl()
 	{
 		return parentControl;
-	}
-	void CCtrlEditSpace::labelTextChanged(juce::Label *labelThatHasChanged)
-	{
-		if (labelThatHasChanged == &fmtValueLabel)
-		{
-			auto const & editText = fmtValueLabel.getText();
-			if (editText.length())
-				interpretAndSet(editText.toStdString());
-
-		}
 	}
 
 	void CCtrlEditSpace::changeListenerCallback(ChangeBroadcaster *source)
