@@ -136,7 +136,6 @@ namespace cpl
 		bool compactMode;
 		volatile bool inputValueWasValid;
 		volatile bool exitAfterAnimation;
-		bool hasBeenInitialized;
 		juce::Label fmtValueLabel;
 	};
 
