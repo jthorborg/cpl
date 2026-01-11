@@ -452,6 +452,8 @@ namespace cpl
 
 			#ifdef _WINDOWS_
 			::QueryPerformanceCounter((LARGE_INTEGER*)&t);
+            #elif defined(CPL_MAC) && defined(CPL_JUCE)
+            t = juce::Time::getHighResolutionTicks();
 			#elif defined(CPL_MAC)
 			auto t1 = mach_absolute_time();
 			*(decltype(t1)*)&t = t1;
@@ -463,43 +465,56 @@ namespace cpl
 
 			return t;
 		}
+    
 		double TimeDifference(long long time)
 		{
 			return TimeToMilisecs(TimeCounter() - time);
 		}
+    
+        double TimeDifferenceSeconds(long long time)
+        {
+            return TimeToSeconds(TimeCounter() - time);
+        }
+
+        double TimeToSeconds(long long time)
+        {
+            double ret = 0.0;
+
+            #ifdef _WINDOWS_
+            long long f;
+
+            ::QueryPerformanceFrequency((LARGE_INTEGER*)&f);
+
+            //long long t = TimeCounter();
+            ret = (time) * (1.0 / f);
+            #elif defined(CPL_MAC) && defined(CPL_JUCE)
+            return time / (double)juce::Time::getHighResolutionTicksPerSecond();
+            #elif defined(CPL_MAC)
+            auto t1 = *(decltype(mach_absolute_time())*)&time;
+
+            struct mach_timebase_info tinfo;
+            if (mach_timebase_info(&tinfo) == KERN_SUCCESS)
+            {
+                double hTime2sFactor = tinfo.numer / (tinfo.denom * 1000.0 * 1000.0 * 1000.0);
+                ret = (((t1)* hTime2sFactor));
+            }
+
+            #elif defined(__CPP11__)
+            using namespace std::chrono;
+
+            high_resolution_clock::rep t1;
+            t1 = *(high_resolution_clock::rep *)&time;
+            seconds elapsed(t1);
+            ret = elapsed.count();
+            #endif
+
+            return ret;
+
+        }
 
 		double TimeToMilisecs(long long time)
 		{
-			double ret = 0.0;
-
-			#ifdef _WINDOWS_
-			long long f;
-
-			::QueryPerformanceFrequency((LARGE_INTEGER*)&f);
-
-			//long long t = TimeCounter();
-			ret = (time) * (1000.0 / f);
-			#elif defined(CPL_MAC)
-			auto t1 = *(decltype(mach_absolute_time())*)&time;
-
-			struct mach_timebase_info tinfo;
-			if (mach_timebase_info(&tinfo) == KERN_SUCCESS)
-			{
-				double hTime2nsFactor = (double)tinfo.numer / tinfo.denom;
-				ret = (((t1)* hTime2nsFactor) / 1000.0) / 1000.0;
-			}
-
-			#elif defined(__CPP11__)
-			using namespace std::chrono;
-
-			high_resolution_clock::rep t1;
-			t1 = *(high_resolution_clock::rep *)&time;
-			milliseconds elapsed(t1);
-			ret = elapsed.count();
-			#endif
-
-			return ret;
-
+            return TimeToSeconds(time) * 1000;
 		}
 
 		/*********************************************************************************************

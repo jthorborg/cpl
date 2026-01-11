@@ -28,7 +28,7 @@
 *************************************************************************************/
 
 
+#ifndef CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
 #include "simd_consts.h"
-#ifndef _CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
 #include "simd_data.inl"
 #endif

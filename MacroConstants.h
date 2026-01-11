@@ -228,6 +228,8 @@
 
 	#elif defined(__llvm__) && defined(__clang__)
 
+        //#define CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
+
 		// cross-platform size_t specifier for printf-families
 		#define CPL_FMT_SZT "%zu"
 

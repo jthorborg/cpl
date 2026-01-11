@@ -127,7 +127,9 @@ namespace cpl
 		std::uint64_t ClockCounter();
 		long long TimeCounter();
 		double TimeDifference(long long);
+        double TimeDifferenceSeconds(long long);
 		double TimeToMilisecs(long long);
+        double TimeToSeconds(long long);
 
 		/// <summary>
 		/// Consumes any key from the console, without requiring enter to be hit.

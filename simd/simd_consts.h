@@ -95,7 +95,7 @@ namespace cpl
 	}; // simd
 }; // cpl
 
-#ifdef _CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
+#ifdef CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
 #include "simd_data.inl"
 #endif
 

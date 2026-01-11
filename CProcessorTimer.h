@@ -40,6 +40,10 @@
 #include <atomic>
 #include "system/SysStats.h"
 
+#if CPL_M_ARM
+#define _CPL_USE_HCLOCK
+#endif
+
 namespace cpl
 {
 	/// <summary>
@@ -50,13 +54,13 @@ namespace cpl
 	/// </summary>
 	class CProcessorTimer
 	{
-	private:
-
-
 	public:
-
+#ifdef _CPL_USE_HCLOCK
+        typedef decltype(cpl::Misc::TimeCounter()) cclock_t;
+#else
 		typedef decltype(cpl::Misc::ClockCounter()) cclock_t;
-
+#endif
+        
 		CProcessorTimer()
 			: deltaT(), startT()
 		{
@@ -90,7 +94,7 @@ namespace cpl
 		/// <summary>
 		/// Returns the number of clocks passed by since start() (excluding whatever happened between any pause/resumes)
 		/// </summary>
-		cclock_t getTime()
+		cclock_t getTime() const noexcept
 		{
 			return getClocks() - startT;
 		}
@@ -102,21 +106,34 @@ namespace cpl
 		{
 			startT = 0; deltaT = 0;
 		}
-
+        
+        double coreUsage() const noexcept
+        {
+            clocksToCoreUsage(getTime());
+        }
+        
 		/// <summary>
 		/// Returns a fraction, that represents how much of the core's capability was used 
 		/// (ie. clocks_used / core_clocks_per_sec)
 		/// </summary>
 		static double clocksToCoreUsage(cclock_t clocks)
 		{
+#ifdef _CPL_USE_HCLOCK
+            return cpl::Misc::TimeToSeconds(clocks);
+#else
 			return (0.001 * clocks) / (cpl::system::CProcessor::getMHz() * 1000);
+#endif
 		}
 
 	private:
 
 		static cclock_t getClocks()
 		{
+#ifdef _CPL_USE_HCLOCK
+            return cpl::Misc::TimeCounter();
+#else
 			return cpl::Misc::ClockCounter();
+#endif
 		}
 
 		cclock_t deltaT, startT;
