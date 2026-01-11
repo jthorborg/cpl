@@ -297,7 +297,7 @@ namespace cpl
 		template<typename TResonance, bool precise = true, typename TInput, typename TFraction>
 		inline auto lanczosFilter(TInput* vec, Types::fsint_t asize, TFraction x, Types::fsint_t wsize)
 		{
-			typedef std::remove_reference<decltype(vec[0])>::type TRet;
+            typedef typename std::remove_reference<decltype(vec[0])>::type TRet;
 
 			TResonance resonance = 0;
 			const auto start = cpl::Math::floorToNInf<Types::fsint_t>(x);
@@ -318,7 +318,7 @@ namespace cpl
 		template<typename R, bool precise = true, typename T, typename Y>
 		inline R lanczosFilter(uarray<T> vec, Y x, Types::fsint_t wsize)
 		{
-			typedef std::remove_reference<decltype(vec[0])>::type TRet;
+            typedef typename std::remove_reference<decltype(vec[0])>::type TRet;
 
 			R resonance = 0;
 			Types::fsint_t start = cpl::Math::floorToNInf<Types::fsint_t>(x);
@@ -340,7 +340,7 @@ namespace cpl
 		template<typename R, bool precise = true, typename T, typename Y>
 		inline auto sincFilter(T* vec, std::size_t asize, Y x, Types::fsint_t wsize)
 		{
-			typedef std::remove_reference<decltype(vec[0])>::type TRet;
+            typedef typename std::remove_reference<decltype(vec[0])>::type TRet;
 
 			R resonance = 0;
 			Types::fsint_t start = cpl::Math::floorToNInf<Types::fsint_t>(x);

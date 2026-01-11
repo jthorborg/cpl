@@ -204,7 +204,7 @@ namespace cpl
 		{
 			std::async(std::launch::async, [=]()
 			{
-				cpl::Misc::Delay(msToDelay);
+				cpl::Misc::Delay(static_cast<int>(msToDelay));
 				const juce::MessageManagerLock lock;
 				f();
 			});

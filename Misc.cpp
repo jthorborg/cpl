@@ -521,13 +521,7 @@ namespace cpl
 			ctime = gmtime(&timeObj);
 			#endif
 			char buffer[100];
-			// not cross platform.
-			#ifdef CPL_MSVC
-
-			sprintf_s(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
-			#else
-			sprintf(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
-			#endif
+			cpl::sprintfs(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
 			return buffer;
 		}
 
@@ -545,12 +539,7 @@ namespace cpl
 			ctime = gmtime(&timeObj);
 			#endif
 			char buffer[100];
-			// not cross platform.
-			#ifdef CPL_MSVC
-			sprintf_s(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
-			#else
-			sprintf(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
-			#endif
+			cpl::sprintfs(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
 			return buffer;
 		}
 

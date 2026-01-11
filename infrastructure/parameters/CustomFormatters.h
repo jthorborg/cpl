@@ -14,7 +14,7 @@ namespace cpl
 	typename std::enable_if<std::is_floating_point<T>::value, std::string>::type printer(const T & val, int precision = 2)
 	{
 		char buf[100];
-		std::sprintf(buf, "%.*f", precision, (double)val);
+		cpl::sprintfs(buf, "%.*f", precision, (double)val);
 		return buf;
 	}
 
@@ -80,7 +80,7 @@ namespace cpl
 		virtual bool format(const T & val, std::string & buf) override
 		{
 			char buffer[100];
-			std::sprintf(buffer, "0x%X", (int)val);
+			cpl::sprintfs(buffer, "0x%X", (int)val);
 			buf = buffer;
 			return true;
 		}

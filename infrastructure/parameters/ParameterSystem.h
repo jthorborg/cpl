@@ -330,9 +330,9 @@ namespace cpl
 			{
 				std::string buf;
 				parameter->getFormatter().format(parameter->getTransformer().transform(parameter->getValue()), buf);
-				return std::move(buf);
+				return buf;
 			}
-
+        
 			Formatter & getFormatter() { return parameter->getFormatter(); }
 			Transformer & getTransformer() { return parameter->getTransformer(); }
 

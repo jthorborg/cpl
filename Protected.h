@@ -402,7 +402,7 @@ namespace cpl
 				#ifdef CPL_WINDOWS
 				RaiseException(static_cast<DWORD>(data.exceptCode), 0, 0, nullptr);
 				#else
-				raise(data.exceptCode);
+				raise(static_cast<int>(data.exceptCode));
 				#endif
 			}
 
