@@ -6,7 +6,7 @@ namespace cpl
 	#ifndef CPL_WINDOWS
 	//  GCC Inline Assembly
 	// creds: http://stackoverflow.com/questions/6121792/how-to-check-if-a-cpu-supports-the-sse3-instruction-set
-	void cpuid(int CPUInfo[4], int InfoType)
+	void __cpuid(int CPUInfo[4], int InfoType)
 	{
 		#if defined(__x86_64__) || defined(__i386__)
 			__asm__ __volatile__(
@@ -34,7 +34,7 @@ namespace cpl
 		#endif
 	}
 
-	void cpuidex(int CPUInfo[4], int InfoType, int SubFunctionID)
+	void __cpuidex(int CPUInfo[4], int InfoType, int SubFunctionID)
 	{
 		#if defined(__x86_64__) || defined(__i386__)
 			__asm__	__volatile__("movl $0, %%ecx" : "=g" (SubFunctionID));
@@ -52,9 +52,8 @@ namespace cpl
 			cpuid(CPUInfo, InfoType);
 		#endif
 	}
-	#else
-
 	#endif
+
 	namespace msdn
 	{
 		const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;

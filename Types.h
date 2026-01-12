@@ -30,11 +30,12 @@
 #ifndef CPL_TYPES_H
 #define CPL_TYPES_H
 
+#include "MacroConstants.h"
 #include <string>
 #include <type_traits>
 #include <cstdint>
 #include <errno.h>
-#include "PlatformSpecific.h"
+
 #ifdef CPL_M_X86
 #include <emmintrin.h>
 #include <immintrin.h>

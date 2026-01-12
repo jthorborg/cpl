@@ -27,15 +27,12 @@
 
  *************************************************************************************/
 
-#include "CDisplaySetup.h"
 #include "../MacroConstants.h"
-#include "../gui/Tools.h"
-
-
 #ifdef CPL_WINDOWS
 #include "DisplayOrientationWindows.cpp"
 #elif defined(CPL_MAC)
 #include <CoreGraphics/CGDisplayConfiguration.h>
+#include <IOKit/graphics/IOGraphicsLib.h>
 #elif defined(CPL_UNIXC)
 #include "DisplayOrientationLinux.cpp"
 #else
@@ -44,6 +41,9 @@
 #endif
 #include "../PlatformSpecific.h"
 #include "../MacSupport.h"
+
+#include "CDisplaySetup.h"
+#include "../gui/Tools.h"
 
 namespace cpl
 {

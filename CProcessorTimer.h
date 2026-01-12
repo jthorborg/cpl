@@ -30,18 +30,16 @@
 #ifndef CPL_CPROCESSORTIMER_H
 #define CPL_CPROCESSORTIMER_H
 
-#include "Utility.h"
+#include "MacroConstants.h"
 #include "Misc.h"
 #include "Mathext.h"
 #include <cstdint>
-#include <vector>
-#include <ostream>
 #include <cstdlib>
-#include <atomic>
-#include "system/SysStats.h"
 
-#if CPL_M_ARM
+#ifdef CPL_MAC
 #define _CPL_USE_HCLOCK
+#else
+#include "system/SysStats.h"
 #endif
 
 namespace cpl
@@ -109,7 +107,7 @@ namespace cpl
         
         double coreUsage() const noexcept
         {
-            clocksToCoreUsage(getTime());
+            return clocksToCoreUsage(getTime());
         }
         
 		/// <summary>

@@ -28,6 +28,7 @@
 *************************************************************************************/
 
 #include "MacroConstants.h"
+#include "PlatformMisc.h"
 #include "Misc.h"
 #include <ctime>
 #include "PlatformSpecific.h"
@@ -558,6 +559,79 @@ namespace cpl
 			return buffer;
 		}
 
+        void _internalAlignedFree(void* obj)
+        {
+            #ifdef CPL_WINDOWS
+            _aligned_free(obj);
+            #else
+            if (obj)
+            {
+                free(((void**)obj)[-1]);
+            }
+            #endif
+        }
+        
+        void* alignedBytesMalloc(std::size_t size, std::size_t alignment)
+        {
+            void * ptr = nullptr;
+            #ifdef CPL_WINDOWS
+            ptr = _aligned_malloc(size, alignment);
+            #else
+            // : http://stackoverflow.com/questions/196329/osx-lacks-memalign
+            void *mem = malloc(size + (alignment - 1) + sizeof(void*));
+
+            char *amem = ((char*)mem) + sizeof(void*);
+            amem += ((alignment - ((uintptr_t)amem & (alignment - 1))) & (alignment - 1));
+
+            ((void**)amem)[-1] = mem;
+            ptr = amem;;
+            #endif
+
+            return ptr;
+        }
+    
+        void* _internalAlignedRealloc(void* ptr, std::size_t elementSize, std::size_t numObjects, std::size_t alignment)
+        {
+            #ifdef CPL_WINDOWS
+            return _aligned_realloc(ptr, numObjects * elementSize, alignment);
+            #else
+            #ifdef CPL_MAC
+            // all allocations on OS X are aligned to 16-byte boundaries
+            // NOTE: removed, as alignedFree doesn't account for this
+            //if(alignment <= 16)
+            //    return reinterpret_cast<Type *>(std::realloc(ptr, numObjects * sizeof(Type)));
+            #endif
+            // https://github.com/numpy/numpy/issues/5312
+            void *p1, **p2, *base;
+            std::size_t
+                old_offs,
+                offs = alignment - 1 + sizeof(void*),
+                n = elementSize * numObjects;
+
+            if (ptr != nullptr)
+            {
+                base = *(((void**)ptr) - 1);
+                if ((p1 = std::realloc(base, n + offs)) == nullptr)
+                    return nullptr;
+                if (p1 == base)
+                    return ptr;
+                p2 = (void**)(((std::uintptr_t)(p1) + offs) & ~(alignment - 1));
+                old_offs = (size_t)((std::uintptr_t)ptr - (std::uintptr_t)base);
+                std::memmove(p2, (char*)p1 + old_offs, n);
+            }
+            else
+            {
+                if ((p1 = std::malloc(n + offs)) == nullptr)
+                    return nullptr;
+                p2 = (void**)(((std::uintptr_t)(p1) + offs) & ~(alignment - 1));
+            }
+            *(p2 - 1) = p1;
+            return p2;
+
+            #endif
+        }
+
+    
 		/*********************************************************************************************
 
 			'private' function, initializes the global DirectoryPath

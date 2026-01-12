@@ -141,6 +141,7 @@
 		#define CPL_NOEXCEPT_IF_RELEASE
 	#else
 		#define CPL_NOEXCEPT_IF_RELEASE noexcept
+        #define CPL_RELEASE
 	#endif
 
 	/*
@@ -270,8 +271,10 @@
 			#define CPL_COMPILER_SUPPORTS_AVX
 		#else
 			#define CPL_VECTOR_TARGET
-			#warning "Your compiler is out of date. Support for AVX codepaths is partially disabled."
-		#endif
+            #ifndef CPL_M_ARM
+                #warning "Your compiler is out of date. Support for AVX codepaths is partially disabled."
+            #endif
+        #endif
 
 		// Enable inclusion of all simd headers.
 		#ifndef __SSE__

@@ -118,7 +118,6 @@
 #include <atomic>
 #include <optional>
 #include "../stdext.h"
-#include "../PlatformSpecific.h"
 #include "../Misc.h"
 #include "../ProgramVersion.h"
 #include "../Exceptions.h"

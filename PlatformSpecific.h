@@ -70,10 +70,10 @@ namespace cpl
 #include <dirent.h>
 
 #ifdef CPL_MAC
+
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
 #include "MacSupport.h"
-#include <IOKit/graphics/IOGraphicsLib.h>
 
 #ifndef CPL_JUCE
 #include <OpenGL/gl.h>

@@ -30,6 +30,7 @@
 #include "Misc.h"
 #include <vector>
 #include <memory>
+#include "PlatformMisc.h"
 
 namespace cpl
 {

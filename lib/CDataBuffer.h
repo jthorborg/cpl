@@ -36,7 +36,9 @@
 
 #ifndef _CDATABUFFER_H
 #define _CDATABUFFER_H
+
 #include "../MacroConstants.h"
+#include "../Misc.h"
 #include <vector>
 #include <cstdlib>
 #include <type_traits>

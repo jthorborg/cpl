@@ -29,6 +29,7 @@
 
 #include "Resources.h"
 #include "Misc.h"
+#include "PlatformMisc.h"
 
 namespace cpl
 {
