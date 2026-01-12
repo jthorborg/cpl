@@ -112,7 +112,7 @@ namespace cpl
 		auto fileChooser = std::make_unique<juce::FileChooser>(programInfo.name + ": Load preset from a file...",
 			juce::File(presetDirectory()),
 		#ifdef CPL_MAC
-			"*." + programInfo.programAbbr); // it just doesn't work..
+            "*." + extension, false); // native file selector on macos can only filter for one extension
 		#elif defined(CPL_UNIXC)
 			// native dialogs hangs programs on the distros I've tried
 			"*." + extension, false);
@@ -121,7 +121,7 @@ namespace cpl
 		#endif
 
 		fileChooser->launchAsync(
-			juce::FileBrowserComponent::openMode,
+			juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
 			[this, whenDone, extension, builder = std::move(builder)] (const juce::FileChooser& chooser) mutable
 			{
 				auto result = chooser.getResult();
