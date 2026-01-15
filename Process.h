@@ -106,12 +106,7 @@
 #include "process/Env.h"
 #include "process/ProcessUtil.h"
 #include <functional>
-// TODO: Fix to detect GCC C++17 support
-#if !__has_include(<optional>)
-#include <experimental/optional>
-#else
 #include <optional>
-#endif
 
 namespace cpl
 {

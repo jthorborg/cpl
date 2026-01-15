@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <string>
 #include <algorithm>
+#include <limits>
 
 #ifdef _MSC_VER
 #pragma warning(push)

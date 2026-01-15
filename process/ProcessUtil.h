@@ -52,7 +52,7 @@ namespace cpl
 			NullableHandle(T h) : handle(h) {}
 			NullableHandle(std::nullptr_t) : handle(null()) {}
 
-			operator T() { return handle; }
+			operator T() const noexcept { return handle; }
 
 			bool operator ==(const NullableHandle &other) const { return handle == other.handle; }
 			bool operator !=(const NullableHandle &other) const { return handle != other.handle; }

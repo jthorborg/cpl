@@ -148,7 +148,7 @@ namespace cpl
 		}
 
 
-		bool CSubpixelSoftwareGraphics::tryToDrawGlyph(int glyphNumber, const AffineTransform & z)
+		bool CSubpixelSoftwareGraphics::tryToDrawGlyph(int glyphNumber, const juce::AffineTransform & z)
 		{
 			using namespace juce::RenderingHelpers;
 

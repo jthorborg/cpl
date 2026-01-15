@@ -782,37 +782,37 @@ namespace cpl
 		template<typename T, typename D>
 		CSerializer & operator << (const std::unique_ptr<T, D> & object)
 		{
-			static_assert(delayed_error<T>::value, "Serialization of std::unique_ptr is disabled (it is most likely NOT what you want; otherwise use .get())");
+			static_assert(delayed_error<T>::value, "Serialization of std::unique_ptr is disabled (it is most likely NOT what you want; otherwise use .get())"); return *this;
 		}
 
 		template<typename T, typename D>
 		CSerializer & operator >> (std::unique_ptr<T, D> & object)
 		{
-			static_assert(delayed_error<T>::value, "Deserialization of std::unique_ptr is disabled (it is most likely NOT what you want; otherwise use .get())");
+			static_assert(delayed_error<T>::value, "Deserialization of std::unique_ptr is disabled (it is most likely NOT what you want; otherwise use .get())"); return *this;
 		}
 
 		template<typename T>
 		CSerializer& operator << (const std::shared_ptr<T>& object)
 		{
-			static_assert(delayed_error<T>::value, "Serialization of std::shared_ptr is disabled (it is most likely NOT what you want; otherwise use .get())");
+			static_assert(delayed_error<T>::value, "Serialization of std::shared_ptr is disabled (it is most likely NOT what you want; otherwise use .get())"); return *this;
 		}
 
 		template<typename T>
 		CSerializer& operator >> (std::shared_ptr<T>& object)
 		{
-			static_assert(delayed_error<T>::value, "Deserialization of std::shared_ptr is disabled (it is most likely NOT what you want; otherwise use .get())");
+			static_assert(delayed_error<T>::value, "Deserialization of std::shared_ptr is disabled (it is most likely NOT what you want; otherwise use .get())"); return *this;
 		}
 
 		template<typename T>
 		CSerializer& operator >> (std::optional<T>& object)
 		{
-			static_assert(delayed_error<T>::value, "Serialization of std::optional is disabled (don't count on it being binary stable)");
+			static_assert(delayed_error<T>::value, "Serialization of std::optional is disabled (don't count on it being binary stable)"); return *this;
 		}
 
 		template<typename T>
 		CSerializer& operator << (std::optional<T>& object)
 		{
-			static_assert(delayed_error<T>::value, "Deserialization of std::optional is disabled (don't count on it being binary stable)");
+			static_assert(delayed_error<T>::value, "Deserialization of std::optional is disabled (don't count on it being binary stable)"); return *this;
 		}
 
 		/// <summary>

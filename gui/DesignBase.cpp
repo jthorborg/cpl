@@ -315,7 +315,7 @@ namespace cpl
 			d1 + xO + 0, d1 + yO + triangleSize * 0.5f
 		);
 
-		triangleVertices.applyTransform(AffineTransform::identity.rotated(float(isPopped * -M_PI * 0.5), d1 + xO + triangleSize * 0.5f, d1 + yO + triangleSize * 0.5f));
+		triangleVertices.applyTransform(AffineTransform().rotated(float(isPopped * -M_PI * 0.5), d1 + xO + triangleSize * 0.5f, d1 + yO + triangleSize * 0.5f));
 		g.setColour(cpl::GetColour(cpl::ColourEntry::Activated).brighter(
 			c.isMouseOverOrDragging() * 0.1f + 0.2f + 0.2f * isPopped)
 		);

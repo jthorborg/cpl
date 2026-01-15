@@ -145,7 +145,7 @@ namespace cpl
 					Scalar scale = Scalar(1) / input.size();
 					auto cout = output.template reinterpret<Complex>();
 
-					for (std::size_t i = 0; i < size() / 4; i += 4)
+					for (std::size_t i = 0; i < size / 4; i += 4)
 					{
 						cout[i + 0] = input[i + 0] * scale;
 						cout[i + 1] = input[i + 1] * scale;

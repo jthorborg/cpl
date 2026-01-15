@@ -63,7 +63,6 @@ namespace cpl
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sysctl.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <fcntl.h>
@@ -74,6 +73,7 @@ namespace cpl
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
 #include "MacSupport.h"
+#include <sys/sysctl.h>
 
 #ifndef CPL_JUCE
 #include <OpenGL/gl.h>
