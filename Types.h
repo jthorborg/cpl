@@ -90,7 +90,7 @@ namespace cpl
 		typedef __m256i v256si;
 
 		#ifdef CPL_WINDOWS
-		typedef DWORD OSError;
+		typedef std::uint32_t OSError; // DWORD
 		#else
 		typedef int OSError;
 		#endif

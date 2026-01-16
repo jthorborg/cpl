@@ -43,6 +43,7 @@
 
 #ifdef CPL_JUCE
 
+#include "../JuceLibraryCode/JuceHeader.h"
 #include <juce_opengl/juce_opengl.h>
 
 namespace cpl

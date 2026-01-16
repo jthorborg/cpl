@@ -40,6 +40,11 @@
 #include "MacroConstants.h"
 #include "ProgramInfo.h"
 #include "Core.h"
+#include "lib/string_ref.h"
+
+#ifdef CPL_WINDOWS
+#include <Windows.h> // macros for IsDebuggerPresent, OutputDebugString, DebugBreak
+#endif
 
 namespace cpl
 {
