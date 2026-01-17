@@ -537,38 +537,12 @@ namespace cpl
 		protected:
 			std::shared_ptr<StreamType> stream;
 			Reference() = default;
-			Reference(Reference&& ref)
+			Reference(Reference&& ref) noexcept
 				: stream(std::move(ref.stream))
 			{
 			}
 		public:
 			Handle getHandle() const noexcept { return { stream.get() }; }
-		};
-
-		struct ExclusiveDebugScope
-		{
-			ExclusiveDebugScope(std::atomic_flag& flag)
-				: flag(flag)
-			{
-				if (flag.test_and_set(std::memory_order_release))
-				{
-					flag.clear();
-					CPL_RUNTIME_EXCEPTION("Re-entrancy / concurrency detected in audio stream producer");
-				}
-			}
-
-			~ExclusiveDebugScope() noexcept(false)
-			{
-				// TODO: use test() in C++20
-				if (!flag.test_and_set(std::memory_order_release))
-				{
-					CPL_RUNTIME_EXCEPTION("Re-entrancy / concurrency detected in audio stream producer");
-				}
-
-				flag.clear();
-			}
-
-			std::atomic_flag& flag;
 		};
 
 		class Output final : public Reference
@@ -704,26 +678,6 @@ namespace cpl
 
 		struct FrameBatch
 		{
-			template <typename Other>
-			bool hasContents(const std::weak_ptr<Other>& w)
-			{
-				return w.owner_before(std::weak_ptr<Other>{}) || std::weak_ptr<Other>{}.owner_before(w);
-			}
-
-			FrameBatch(AudioStream& audioStream)
-				: stream(&audioStream)
-			{
-				if (hasContents(audioStream.output))
-				{
-					output = audioStream.output.lock();
-					// if the output died concurrently between the test and the lock.
-					if (output)
-						output->beginFrameProcessing();
-					else
-						stream = nullptr;
-				}
-			}
-
 			FrameBatch(std::shared_ptr<Output>&& out)
 				: output(std::move(out)), stream(nullptr)
 			{
@@ -747,13 +701,76 @@ namespace cpl
 					output->endFrameProcessing();
 			}
 
+		protected:
+
+			template <typename Other>
+			static bool hasContents(const std::weak_ptr<Other>& w)
+			{
+				return w.owner_before(std::weak_ptr<Other>{}) || std::weak_ptr<Other>{}.owner_before(w);
+			}
+
+			FrameBatch(AudioStream& audioStream)
+				: stream(&audioStream)
+			{
+				if (hasContents(audioStream.output))
+				{
+					output = audioStream.output.lock();
+					// if the output died concurrently between the test and the lock.
+					if (output)
+						output->beginFrameProcessing();
+					else
+						stream = nullptr;
+				}
+			}
+
+		private:
+
 			AudioStream* stream;
 			std::shared_ptr<Output> output;
+		};
+
+		struct ExclusiveDebugScope
+		{
+			ExclusiveDebugScope(std::atomic_flag& flag)
+				: flag(flag)
+			{
+				if (flag.test_and_set(std::memory_order_release))
+				{
+					flag.clear();
+					CPL_RUNTIME_EXCEPTION("Re-entrancy / concurrency detected in audio stream producer");
+				}
+			}
+
+			~ExclusiveDebugScope() noexcept(false)
+			{
+				// TODO: use test() in C++20
+				if (!flag.test_and_set(std::memory_order_release))
+				{
+					CPL_RUNTIME_EXCEPTION("Re-entrancy / concurrency detected in audio stream producer");
+				}
+
+				flag.clear();
+			}
+
+			std::atomic_flag& flag;
+		};
+
+		class Input;
+
+		struct InputFrameBatch : public FrameBatch
+		{
+			InputFrameBatch(Input& input);
+
+		private:
+
+			ExclusiveDebugScope debugScope;
 		};
 
 		class Input final : public Reference
 		{
 			friend class AudioStream<T, PacketSize>;
+			friend class InputFrameBatch;
+
 		public:
 #ifdef CPL_JUCE
 			void processIncomingRTAudio(const T* const * buffer, std::size_t numChannels, std::size_t numSamples, juce::AudioPlayHead& ph)
@@ -766,15 +783,15 @@ namespace cpl
 			void processIncomingRTAudio(const T* const * buffer, std::size_t numChannels, std::size_t numSamples, const Playhead& ph);
 
 			/// <summary>
-			/// Returns the playhead for the system.
-			/// Only valid to call and read, while you're inside a
-			/// real time callback.
+			/// This must be called at least once, before streaming starts.
+			/// It is not safe to call this function concurrently
+			/// - decide on one thread, controlling it.
 			/// </summary>
-			const Playhead& getPlayhead() const noexcept
+			template<typename ModifierFunc>
+			void initializeInfo(ModifierFunc&& func, InputFrameBatch& batch)
 			{
-				ExclusiveDebugScope scope(reentrancy);
-
-				return playhead;
+				func(internalInfo);
+				batch.submitFrame(ProducerFrame(internalInfo));			
 			}
 
 			/// <summary>
@@ -785,22 +802,22 @@ namespace cpl
 			template<typename ModifierFunc>
 			void initializeInfo(ModifierFunc&& func)
 			{
-				ExclusiveDebugScope scope(reentrancy);
+				InputFrameBatch batch(*this);
+				initializeInfo(std::move(func), batch);
+			}
 
-				func(internalInfo);
-				FrameBatch batch(*this->stream);
-				batch.submitFrame(ProducerFrame(internalInfo));
+			void enqueueChannelName(std::size_t index, std::string&& name, InputFrameBatch& batch)
+			{
+				ProducerFrame frame;
+				frame.template emplace<ChannelNameData>(ChannelNameData{ index, std::move(name) });
+
+				batch.submitFrame(std::move(frame));
 			}
 
 			void enqueueChannelName(std::size_t index, std::string&& name)
 			{
-				ExclusiveDebugScope scope(reentrancy);
-
-				ProducerFrame frame;
-				frame.template emplace<ChannelNameData>(ChannelNameData{ index, std::move(name) });
-
-				FrameBatch batch(*this->stream);
-				batch.submitFrame(std::move(frame));
+				InputFrameBatch batch(*this);
+				enqueueChannelName(index, std::move(name), batch);
 			}
 
 			/// <summary>
@@ -955,9 +972,7 @@ namespace cpl
 			input.stream = stream;
 			output->stream = std::move(stream);
 
-			auto ret = std::make_tuple(std::move(input), std::move(output));
-
-			return std::move(ret);
+			return std::make_tuple(std::move(input), std::move(output));
 		}
 			   		
 	private:

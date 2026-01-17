@@ -100,6 +100,8 @@ namespace cpl
 					using namespace cpl;
 					using namespace cpl::simd;
 
+					CPL_RUNTIME_ASSERTION(sampleRate > 0);
+
 					const auto minWindowSize = std::min(minNSize, maxNSize);
 					const auto maxWindowSize = std::max(minNSize, maxNSize);
 
