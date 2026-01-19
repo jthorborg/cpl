@@ -769,7 +769,7 @@ namespace cpl
 		class Input final : public Reference
 		{
 			friend class AudioStream<T, PacketSize>;
-			friend class InputFrameBatch;
+			friend struct InputFrameBatch;
 
 		public:
 #ifdef CPL_JUCE
