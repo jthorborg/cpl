@@ -630,7 +630,7 @@ namespace cpl
 				{
 					if (N == 0)
 						return;
-					beta = std::max(std::min(beta, (T)0.5), std::numeric_limits<T>::min());
+					beta = std::max(std::min(beta, (T)0.5), (T)0.001);
 					T K = T(symmetry == Shape::Periodic ? N : N - 1);
 					T offset = symmetry == Shape::DFTEven ? (T)(0.5 / K) : 0;
 					for (std::size_t n = 0; n < N; ++n)

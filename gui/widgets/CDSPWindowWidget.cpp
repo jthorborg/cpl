@@ -94,7 +94,7 @@ namespace cpl
 		// scale to graphics size
 		y1 = Math::UnityScale::linear(y1, bot, top);
 
-		if (!std::isnormal(y1) && y1 != 0.0)
+		if (std::fpclassify(y1) != FP_NORMAL)
 		{
 			y1 = bot;
 		}
@@ -107,7 +107,7 @@ namespace cpl
 			y2 = Math::UnityScale::Inv::exp(y2, fftMin, fftMax);
 
 			// scale to graphics size
-			y2 = Math::UnityScale::linear(y2, bot, top);
+			y2 = Math::UnityScale::linear(y2, bot - 0.5f, top + 0.5f);
 
 			if (!std::isnormal(y2))
 			{
@@ -144,7 +144,7 @@ namespace cpl
 			// normalize to [-1, 1]
 			y2 = Math::UnityScale::Inv::linear(y2, minW, maxW);
 			// scale to graphics size
-			y2 = Math::UnityScale::linear(y2, bot, top);
+			y2 = Math::UnityScale::linear(y2, bot - 0.5f, top + 0.5f);
 
 
 			g.drawLine({(float)n - 1, (float)y1, float(n), (float)y2});
