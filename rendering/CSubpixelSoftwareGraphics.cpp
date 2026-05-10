@@ -27,6 +27,8 @@
 
 *************************************************************************************/
 
+#ifdef CPL_ENABLE_CSUBPIXELGRAPHICS
+
 #include "CSubpixelSoftwareGraphics.h"
 #include "SubpixelRendering.h"
 #include "CSubpixelScanlineRenderer.h"
@@ -348,3 +350,5 @@ namespace cpl
 
 	}; // {} rendering
 }; // {} cpl
+
+#endif

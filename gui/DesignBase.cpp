@@ -354,11 +354,12 @@ namespace cpl
 		juce::Point<int> origin,
 		const RectangleList< int > &initialClip)
 	{
+#ifdef CPL_ENABLE_CSUBPIXELGRAPHICS
 		if (tryToRenderSubpixel/* && imageToRenderOn.getFormat() == imageToRenderOn.RGB*/)
 		{
 			return std::make_unique<rendering::CSubpixelSoftwareGraphics>(imageToRenderOn, origin, initialClip);
 		}
-
+#endif
 		return juce::LookAndFeel_V3::createGraphicsContext(imageToRenderOn, origin, initialClip);
 
 	}
@@ -405,7 +406,7 @@ namespace cpl
 		else
 			#endif
 		{
-			return LookAndFeel::getTypefaceForFont(font);
+			return juce::LookAndFeel_V3::getTypefaceForFont(font);
 		}
 
 	}

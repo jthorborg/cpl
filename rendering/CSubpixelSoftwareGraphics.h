@@ -30,6 +30,11 @@
 
 #ifndef _CSUBPIXELSOFTWAREGRAPHICS_H
 #define _CSUBPIXELSOFTWAREGRAPHICS_H
+
+// #define CPL_ENABLE_CSUBPIXELGRAPHICS 1
+
+#ifdef CPL_ENABLE_CSUBPIXELGRAPHICS
+
 #include "../Common.h"
 #include "SubpixelRendering.h"
 
@@ -73,4 +78,7 @@ namespace cpl
 		};
 	}; // {} rendering
 }; // {} cpl
+
+#endif
+
 #endif
