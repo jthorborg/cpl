@@ -9,6 +9,27 @@
 
 namespace cpl
 {
+	enum class FormattingFlags : std::int32_t
+	{
+		none,
+		includeUnit = 1 << 0,
+		defaultFlags = includeUnit
+	};
+
+	inline FormattingFlags operator ~(FormattingFlags flags)
+	{
+		return static_cast<FormattingFlags>(~static_cast<std::int32_t>(flags));
+	}
+
+	inline FormattingFlags operator & (FormattingFlags a, FormattingFlags b)
+	{
+		return static_cast<FormattingFlags>(static_cast<std::int32_t>(a) & static_cast<std::int32_t>(b));
+	}
+
+	inline FormattingFlags operator | (FormattingFlags a, FormattingFlags b)
+	{
+		return static_cast<FormattingFlags>(static_cast<std::int32_t>(a) | static_cast<std::int32_t>(b));
+	}
 
 	template<typename T>
 	typename std::enable_if<std::is_floating_point<T>::value, std::string>::type printer(const T & val, int precision = 2)
@@ -28,8 +49,10 @@ namespace cpl
 	class VirtualFormatter
 	{
 	public:
-		virtual bool format(const T & val, std::string & buf) = 0;
+
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags = FormattingFlags::defaultFlags) = 0;
 		virtual bool interpret(const string_ref buf, T & val) = 0;
+		virtual std::string_view getUnit() const { return {}; }
 		virtual ~VirtualFormatter() {}
 	};
 
@@ -37,7 +60,7 @@ namespace cpl
 	class BasicFormatter : public VirtualFormatter<T>
 	{
 	public:
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
 			buf = printer(val, 2);
 			return true;
@@ -53,7 +76,7 @@ namespace cpl
 	class IntegerFormatter : public VirtualFormatter<T>
 	{
 	public:
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
 			auto intValue = static_cast<std::int64_t>(std::round(val));
 			buf = printer(intValue, 2);
@@ -77,7 +100,7 @@ namespace cpl
 	class HexFormatter : public VirtualFormatter<T>
 	{
 	public:
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
 			char buffer[100];
 			cpl::sprintfs(buffer, "0x%X", (int)val);
@@ -95,7 +118,7 @@ namespace cpl
 	class BooleanFormatter : public VirtualFormatter<T>
 	{
 	public:
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
 			if (val >= (T)0.5)
 				buf = "true";
@@ -124,14 +147,19 @@ namespace cpl
 
 		using BasicFormatter<T>::interpret;
 
-		virtual bool format(const T & val, std::string & buf) override
+		std::string_view getUnit() const override { return this->unit; }
+
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
-			BasicFormatter<T>::format(val, buf);
-			buf += unit;
+			BasicFormatter<T>::format(val, buf, flags);
+
+			if ((flags & FormattingFlags::includeUnit) != FormattingFlags::none)
+				buf += " " + unit;
+
 			return true;
 		}
 
-		void setUnit(const std::string_view unit) { this->unit = std::string(" "); this->unit += unit; }
+		void setUnit(const std::string_view unit) { this->unit = unit; }
 
 	private:
 		std::string unit;
@@ -144,9 +172,9 @@ namespace cpl
 
 		DBFormatter() : UnitFormatter<T>("dB") {}
 
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
-			return UnitFormatter<T>::format(20 * std::log10(val), buf);
+			return UnitFormatter<T>::format(20 * std::log10(val), buf, flags);
 		}
 
 		virtual bool interpret(const string_ref buf, T & val) override
@@ -169,9 +197,9 @@ namespace cpl
 
 		PercentageFormatter() : UnitFormatter<T>("%") {}
 
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
-			return UnitFormatter<T>::format(std::round(val * 100), buf);
+			return UnitFormatter<T>::format(std::round(val * 100), buf, flags);
 		}
 
 		virtual bool interpret(const string_ref buf, T & val) override
@@ -201,7 +229,7 @@ namespace cpl
 		}
 		const std::vector<std::string> & getValues() const noexcept { return values; }
 
-		virtual bool format(const T & val, std::string & buf) override
+		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
 			if (values.size() == 0)
 			{
@@ -210,7 +238,7 @@ namespace cpl
 
 			auto index = static_cast<std::size_t>(
 				std::min<std::size_t>(values.size() - 1, static_cast<std::size_t>(std::max<T>(std::round(val), (T)0)))
-				);
+			);
 			buf = values[index];
 
 			return true;

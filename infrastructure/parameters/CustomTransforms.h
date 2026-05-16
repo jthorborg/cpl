@@ -106,6 +106,9 @@ namespace cpl
 	class BooleanRange : public VirtualTransformer<T>
 	{
 	public:
+
+		int getQuantization() override { return 2; }
+
 		T normalize(T val) const noexcept override
 		{
 			return val >= 0.5 ? 1 : 0;
@@ -150,6 +153,8 @@ namespace cpl
 
 		IntegerLinearRange(T minimum, T maximum) : RangedVirtualTransformerBase<T>(minimum, maximum) {}
 		IntegerLinearRange() {}
+
+		int getQuantization() override { return max - min; }
 
 		T normalize(T val) const noexcept override
 		{

@@ -37,7 +37,7 @@ namespace cpl
 				this->setQuantization(enum_cast<int>(cpl::dsp::WindowTypes::End) - 1);
 			}
 
-			virtual bool format(const ValueType & val, std::string & buf) override
+			virtual bool format(const ValueType & val, std::string & buf, FormattingFlags flags) override
 			{
 				auto wtype = enum_cast<cpl::dsp::WindowTypes>(val);
 				buf = dsp::Windows::stringFromEnum(wtype);
@@ -70,7 +70,7 @@ namespace cpl
 		{
 		public:
 
-			virtual bool format(const ValueType & val, std::string & buf) override
+			virtual bool format(const ValueType & val, std::string & buf, FormattingFlags flags) override
 			{
 				char buffer[1000];
 				if (sprintfs(buffer, u8"%d dB (%.1f\u03B1)", int(std::round(val)), val / 20) > 0)
