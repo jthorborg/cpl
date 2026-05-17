@@ -26,17 +26,18 @@
 		Defines a wrapper call that catches system-level exceptions through a platform
 		independant interface.
 
-	options:
-		#define CPL_UNSAFE_USE_SIGACTION
-		uses sigaction() instead of signal() on unix systems. Highly recommended
-
 *************************************************************************************/
 
 #ifndef CPL_PROTECTED_H
 #define CPL_PROTECTED_H
 
+// Avoid PlatformSpecific.h, as that'll pull in JUCE if available.
+#include "MacroConstants.h"
+#ifdef CPL_WINDOWS
+#include <excpt.h>
+#endif
+
 #include "LibraryOptions.h"
-#include "PlatformSpecific.h"
 #include <vector>
 #include <signal.h>
 #include <thread>
@@ -45,7 +46,6 @@
 #include "Utility.h"
 #include <memory>
 #include "Exceptions.h"
-#include "Misc.h"
 
 #define CPL_TRACEGUARD_START \
 	cpl::CProtected::instance().topLevelTraceGuardedCode([&]() {
@@ -59,8 +59,6 @@ namespace cpl
 
 	class CProtected final : Utility::CNoncopyable
 	{
-		static constexpr int OSCustomRaiseCode = 0xBEEF;
-
 		struct Throwable
 		{
 			virtual ~Throwable() {};
@@ -326,17 +324,29 @@ namespace cpl
 		struct CSystemException : public std::exception
 		{
 		public:
-			// this is kinda ugly, but needed to create a simple interface, abstract to seh and signals
 
-			// the retarted create() pattern is used because clang STILL doesn't support thread_local,
-			// thus we must use __thread, which DOESN'T support non-trivial destruction (implied by use of constructors).
-			// TODO: fix the upper messages.
+			enum class Status 
+			{
+				nullptr_from_plugin = 1,
+				access_violation = SIGSEGV,
+				intdiv_zero,
+				fdiv_zero,
+				finvalid,
+				fdenormal,
+				finexact,
+				foverflow,
+				funderflow,
+				intsubscript,
+				intoverflow,
+				undefined_behaviour
+			};
+
 			struct Storage
 			{
 				const void * faultAddr; // the address the exception occured
 				const void * attemptedAddr; // if exception is a memory violation, this is the attempted address
-				XWORD exceptCode; // the exception code
-				int extraInfoCode; // addition, exception-specific code
+				Status exceptCode; // the exception code
+				int extraInfoCode; // additional, exception-specific code
 				int actualCode; // what signal it was
 
 				union {
@@ -345,10 +355,10 @@ namespace cpl
 					bool aVInProtectedMemory; // whether an access violation happened in our protected memory
 				};
 
-				static Storage create(XWORD exp, bool resolved = true, const void * faultAddress = nullptr,
+				static Storage create(Status code, bool resolved = true, const void * faultAddress = nullptr,
 					const void * attemptedAddress = nullptr, int extraCode = 0, int actualCode = 0)
 				{
-					return {faultAddress, attemptedAddress, exp, extraCode, actualCode, resolved};
+					return {faultAddress, attemptedAddress, code, extraCode, actualCode, resolved};
 				}
 
 				static Storage create()
@@ -356,35 +366,6 @@ namespace cpl
 					return {};
 				}
 			} data;
-
-			enum status : XWORD {
-				nullptr_from_plugin = 1,
-				#ifdef CPL_WINDOWS
-					// this is not good: these are not crossplatform constants.
-					access_violation = EXCEPTION_ACCESS_VIOLATION,
-					undefined_behaviour = EXCEPTION_ILLEGAL_INSTRUCTION,
-					intdiv_zero = EXCEPTION_INT_DIVIDE_BY_ZERO,
-					fdiv_zero = EXCEPTION_FLT_DIVIDE_BY_ZERO,
-					finvalid = EXCEPTION_FLT_INVALID_OPERATION,
-					fdenormal = EXCEPTION_FLT_DENORMAL_OPERAND,
-					finexact = EXCEPTION_FLT_INEXACT_RESULT,
-					foverflow = EXCEPTION_FLT_OVERFLOW,
-					funderflow = EXCEPTION_FLT_UNDERFLOW
-				#elif defined(CPL_MAC) || defined(CPL_UNIXC)
-					access_violation = SIGSEGV,
-					intdiv_zero,
-					fdiv_zero,
-					finvalid,
-					fdenormal,
-					finexact,
-					foverflow,
-					funderflow,
-					intsubscript,
-					intoverflow,
-					undefined_behaviour
-
-				#endif
-			};
 
 			CSystemException()
 				: data(Storage::create())
@@ -397,18 +378,11 @@ namespace cpl
 				data = eData;
 			}
 
-			void reraise() const
-			{
-				#ifdef CPL_WINDOWS
-				RaiseException(static_cast<DWORD>(data.exceptCode), 0, 0, nullptr);
-				#else
-				raise(static_cast<int>(data.exceptCode));
-				#endif
-			}
+			void reraise() const;
 
-			CSystemException(XWORD exp, bool resolved = true, const void * faultAddress = nullptr, const void * attemptedAddress = nullptr, int extraCode = 0, int actualCode = 0)
+			CSystemException(Status code, bool resolved = true, const void * faultAddress = nullptr, const void * attemptedAddress = nullptr, int extraCode = 0, int actualCode = 0)
 			{
-				data = Storage::create(exp, resolved, faultAddress, attemptedAddress, extraCode, actualCode);
+				data = Storage::create(code, resolved, faultAddress, attemptedAddress, extraCode, actualCode);
 			}
 
 			const char * what() const noexcept override

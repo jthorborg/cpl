@@ -368,6 +368,11 @@ namespace cpl
 			return false;
 		}
 
+		void OutputToDebugger(const string_ref message)
+		{
+			CPL_DEBUGOUT(message.data());
+		}
+
 
 		const char * GetImageBase()
 		{

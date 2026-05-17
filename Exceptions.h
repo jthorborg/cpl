@@ -40,11 +40,6 @@
 #include "MacroConstants.h"
 #include "ProgramInfo.h"
 #include "Core.h"
-#include "lib/string_ref.h"
-
-#ifdef CPL_WINDOWS
-#include <Windows.h> // macros for IsDebuggerPresent, OutputDebugString, DebugBreak
-#endif
 
 namespace cpl
 {
@@ -60,6 +55,7 @@ namespace cpl
     namespace Misc
     {
         bool IsBeingDebugged();
+		void OutputToDebugger(const string_ref message);
     };
 
 	bool IsDebuggerAttached();
@@ -94,7 +90,7 @@ namespace cpl
 			{ \
 				std::string message = std::string("Runtime exception (" #exceptionT ") in ") + ::cpl::programInfo.name + " (" + ::cpl::programInfo.version.toString() + "): \"" + msg + "\" in " + file + ":" + ::std::to_string(line) + " -> " + funcname; \
 				auto e = exceptionExpression;\
-				CPL_DEBUGOUT((message + "\n").c_str()); \
+				cpl::Misc::OutputToDebugger(message + "\n"); \
 				cpl::LogException(message); \
 				if(cpl::IsDebuggerAttached()) DBG_BREAK(); \
 				bool doAbort = isassert; \

@@ -108,7 +108,7 @@
 	// gcc or msvc assembly syntax?
 	#ifdef _MSC_VER
 		#define CPL_INTEL_ASSEMBLY
-		#define DBG_BREAK() DebugBreak();
+		#define DBG_BREAK() __debugbreak();
 	#elif defined(__aarch64__) || defined(__arm64__)
 		#define CPL_ATT_ASSEMBLY
 		#define DBG_BREAK() __builtin_debugtrap()
