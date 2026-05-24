@@ -27,7 +27,7 @@ namespace cpl
 
 		float getValue() const override // Normalized
 		{
-			return view.getValueNormalized<float>();
+			return view.template getValueNormalized<float>();
 		}
 
 		void setValue(float newValue) override

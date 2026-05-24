@@ -35,6 +35,8 @@
 #include "MacroConstants.h"
 #ifdef CPL_WINDOWS
 #include <excpt.h>
+#else
+#include <setjmp.h>
 #endif
 
 #include "LibraryOptions.h"
@@ -400,7 +402,7 @@ namespace cpl
 			else
 			{
 				threadData.pendingException.reset(new ThrowableException<Exception>(Exception(args...)));
-					siglongjmp(threadData.threadJumpBuffer, OSCustomRaiseCode);
+				siglongjmp(threadData.threadJumpBuffer, 0xBEEF);
 			}
 #else
 			throw Exception(args...);

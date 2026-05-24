@@ -87,8 +87,13 @@ namespace cpl
 		return buf;
 	}
 
-#ifdef CPL_WINDOWS
-	DWORD StatusCodeToDWORD(CProtected::CSystemException::Status code)
+#ifndef CPL_WINDOWS
+	XWORD StatusCodeToXWORD(CProtected::CSystemException::Status code)
+	{
+		return (XWORD)code;
+	}
+#else
+	XWORD StatusCodeToXWORD(CProtected::CSystemException::Status code)
 	{
 		switch (code)
 		{
@@ -145,7 +150,7 @@ namespace cpl
 		base << "Non-software exception at 0x" << std::hex << e.data.faultAddr
 			<< " (at image base " + formatDifferenceAddress(imageBase, e.data.faultAddr) + ")" << newl;
 
-		base << "Exception code: " << StatusCodeToDWORD(e.data.exceptCode)
+		base << "Exception code: " << StatusCodeToXWORD(e.data.exceptCode)
 			<< ", actual code: " << e.data.actualCode
 			<< ", extra info: " << e.data.extraInfoCode << newl;
 

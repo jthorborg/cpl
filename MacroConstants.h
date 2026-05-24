@@ -29,7 +29,7 @@
 
 *************************************************************************************/
 
-#ifndef CPL_MACROCONSTANTS_H
+#if defined(__cplusplus) && !defined(CPL_MACROCONSTANTS_H)
 	#define CPL_MACROCONSTANTS_H
 	#include <cstdint>
 
@@ -269,38 +269,39 @@
 				#define CPL_VECTOR_TARGET
 			#endif
 			#define CPL_COMPILER_SUPPORTS_AVX
+
+			// Enable inclusion of all simd headers.
+			#ifndef __SSE__
+				#define __SSE__
+			#endif
+			#ifndef __SSE2__
+				#define __SSE2__
+			#endif
+			#ifndef __SSE3__
+				#define __SSE3__
+			#endif
+			#ifndef __SSSE3__
+				#define __SSSE3__
+			#endif
+			#ifndef __SSE4_2__
+				#define __SSE4_2__
+			#endif
+			#ifndef __SSE4_1__
+				#define __SSE4_1__
+			#endif
+			#ifndef __AVX__
+				#define __AVX__
+			#endif
+			#ifndef __AVX2__
+				#define __AVX2__
+			#endif
+
 		#else
 			#define CPL_VECTOR_TARGET
             #ifndef CPL_M_ARM
                 #warning "Your compiler is out of date. Support for AVX codepaths is partially disabled."
             #endif
         #endif
-
-		// Enable inclusion of all simd headers.
-		#ifndef __SSE__
-			#define __SSE__
-		#endif
-		#ifndef __SSE2__
-			#define __SSE2__
-		#endif
-		#ifndef __SSE3__
-			#define __SSE3__
-		#endif
-		#ifndef __SSSE3__
-			#define __SSSE3__
-		#endif
-		#ifndef __SSE4_2__
-			#define __SSE4_2__
-		#endif
-		#ifndef __SSE4_1__
-			#define __SSE4_1__
-		#endif
-		#ifndef __AVX__
-			#define __AVX__
-		#endif
-		#ifndef __AVX2__
-			#define __AVX2__
-		#endif
 
 		#define cwarn(exp) ("warning: " exp)
 
