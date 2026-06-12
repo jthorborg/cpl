@@ -329,16 +329,21 @@ namespace cpl
 	}
 
 	template<typename T, std::size_t PacketSize>
+	inline AudioStream<T, PacketSize>::InputFrameBatch::InputFrameBatch(Input& input)
+		: FrameBatch(*input.stream), debugScope(input.reentrancy)
+	{
+	}
+
+
+	template<typename T, std::size_t PacketSize>
 	inline void AudioStream<T, PacketSize>::Input::processIncomingRTAudio(const T* const* buffer, std::size_t numChannels, std::size_t numSamples, const AudioStream<T, PacketSize>::Playhead& ph)
 	{
-		ExclusiveDebugScope scope(reentrancy);
-
 		if (internalInfo.isSuspended)
 			return;
 
 		CPL_RUNTIME_ASSERTION(numChannels == internalInfo.channels);
 
-		FrameBatch batch(*this->stream);
+		InputFrameBatch batch(*this);
 
 		cpl::CProcessorTimer overhead, all;
 		overhead.start(); all.start();

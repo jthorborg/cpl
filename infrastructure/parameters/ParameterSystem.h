@@ -17,7 +17,7 @@ namespace cpl
 	class ZeroOneClamper
 	{
 	public:
-		T operator()(T arg) { return std::max((T)0, std::min((T)1, arg)); }
+		T operator()(T arg) { return std::clamp(arg, (T)0, (T)1); }
 	};
 
 
@@ -36,7 +36,7 @@ namespace cpl
 
 		}
 
-		ThreadedParameter(ThreadedParameter && other)
+		ThreadedParameter(ThreadedParameter && other) noexcept
 			: value(other.value.load(LoadOrdering)), transformer(other.transformer), name(std::move(other.name))
 		{
 
@@ -179,11 +179,6 @@ namespace cpl
 
 	};
 
-
-
-
-
-
 	template<class T, typename InternalFrameworkType, typename BaseParameterT>
 	class ParameterGroup
 		: public CSerializer::Serializable
@@ -195,6 +190,7 @@ namespace cpl
 		typedef typename BaseParameter::Transformer Transformer;
 		typedef typename BaseParameter::Formatter Formatter;
 		typedef InternalFrameworkType FrameworkType;
+
 
 		typedef ParameterGroup<T, InternalFrameworkType, BaseParameter> QualifiedGroup;
 
@@ -221,7 +217,7 @@ namespace cpl
 		class UIListener
 		{
 		public:
-			virtual void parameterChangedUI(Parameters::Handle localHandle, Parameters::Handle globalHandle, ParameterView * parameter) = 0;
+			virtual void parameterChangedUI(Parameters::Handle localHandle, Parameters::Handle globalHandle, ParameterView* parameter) = 0;
 			virtual ~UIListener() {}
 		};
 
@@ -232,7 +228,7 @@ namespace cpl
 		class RTListener
 		{
 		public:
-			virtual void parameterChangedRT(Parameters::Handle localHandle, Parameters::Handle globalHandle, BaseParameter * param) = 0;
+			virtual void parameterChangedRT(Parameters::Handle localHandle, Parameters::Handle globalHandle, BaseParameter* param) = 0;
 			virtual ~RTListener() {}
 		};
 
@@ -244,8 +240,8 @@ namespace cpl
 			typedef T ValueType;
 			typedef BaseParameter ParameterType;
 			ParameterView(
-				QualifiedGroup * parentToRef,
-				BaseParameter * parameterToRef,
+				QualifiedGroup* parentToRef,
+				BaseParameter* parameterToRef,
 				Parameters::Handle handleOfThis,
 				bool paramIsAutomatable = true,
 				bool paramCanChangeOthers = false,
@@ -261,7 +257,7 @@ namespace cpl
 
 			}
 
-			ParameterView(ParameterView && other)
+			ParameterView(ParameterView&& other)
 				: parent(other.parent)
 				, handle(other.handle)
 				, parameter(other.parameter)
@@ -273,14 +269,14 @@ namespace cpl
 			}
 
 
-			ParameterType * getParameter() noexcept { return parameter; }
-			const std::string & getNameContext() const { return nameContext; }
+			ParameterType* getParameter() noexcept { return parameter; }
+			const std::string& getNameContext() const { return nameContext; }
 			std::string getExportedName() { return parent->prefix + nameContext + parameter->getName(); }
 			const std::string& getLocalName() { return parameter->getName(); }
 			const std::string& getParentPrefix() const { return parent->getExportPrefix(); }
 			Parameters::Handle getHandle() { return handle; }
-			void addListener(UIListener * listener) { parent->addUIListener(handle, listener); }
-			void removeListener(UIListener * listener) { parent->removeUIListener(handle, listener); }
+			void addListener(UIListener* listener) { parent->addUIListener(handle, listener); }
+			void removeListener(UIListener* listener) { parent->removeUIListener(handle, listener); }
 
 			void updateFromUINormalized(ValueType value, Parameters::UpdateFlagsT flags = Parameters::UpdateFlags::All)
 			{
@@ -330,27 +326,30 @@ namespace cpl
 			{
 				std::string buf;
 				parameter->getFormatter().format(parameter->getTransformer().transform(parameter->getValue()), buf);
-				return std::move(buf);
+				return buf;
 			}
 
-			Formatter & getFormatter() { return parameter->getFormatter(); }
-			Transformer & getTransformer() { return parameter->getTransformer(); }
+			Formatter& getFormatter() { return parameter->getFormatter(); }
+			Transformer& getTransformer() { return parameter->getTransformer(); }
+
+			bool isParameterAutomated() const { return isAutomatable; }
+			bool canParameterChangeOthers() const { return canChangeOthers; }
 
 		private:
 
 			std::string nameContext;
 			Parameters::Handle handle;
-			BaseParameter * parameter;
+			BaseParameter* parameter;
 			bool isAutomatable;
 			bool canChangeOthers;
 			ABoolFlag changedFromProcessor;
-			std::set<UIListener *> uiListeners;
-			QualifiedGroup * parent;
+			std::set<UIListener*> uiListeners;
+			QualifiedGroup* parent;
 		};
 
 
 
-		ParameterGroup(std::string name, std::string exportPrefix, AutomatedProcessor & processorToAutomate, int parameterOffset = 0)
+		ParameterGroup(std::string name, std::string exportPrefix, AutomatedProcessor& processorToAutomate, int parameterOffset = 0)
 			: processor(processorToAutomate), offset(parameterOffset), groupName(std::move(name)), prefix(std::move(exportPrefix)), isSealed(false)
 		{
 			bundleInstalledReferences = std::make_unique<std::vector<BundleInstallReference>>();
@@ -359,7 +358,7 @@ namespace cpl
 
 		int getOffset() const noexcept { return offset; }
 
-		void serialize(CSerializer::Archiver & archive, Version v) override
+		void serialize(CSerializer::Archiver& archive, Version v) override
 		{
 			if (!isSealed)
 				CPL_RUNTIME_EXCEPTION("Parameter system being serialized without being sealed");
@@ -373,7 +372,7 @@ namespace cpl
 			}
 		}
 
-		void deserialize(CSerializer::Builder & builder, Version v) override
+		void deserialize(CSerializer::Builder& builder, Version v) override
 		{
 			if (!isSealed)
 				CPL_RUNTIME_EXCEPTION("Parameter system being deserialized without being sealed");
@@ -395,7 +394,7 @@ namespace cpl
 		/// You can for instance store all your parameters, formatters and transformers in a 
 		/// class deriving from the Parameters::UserContent.
 		/// </summary>
-		void setUserData(Parameters::UserContent * content, bool releaseOnDestruction = true)
+		void setUserData(Parameters::UserContent* content, bool releaseOnDestruction = true)
 		{
 			userContent.reset(content);
 			userContent.get_deleter().doDelete = !!releaseOnDestruction;
@@ -404,7 +403,7 @@ namespace cpl
 		/// <summary>
 		/// Returns anything previously set with setUserData() - as of such, may be null.
 		/// </summary>
-		Parameters::UserContent * getUserContent() noexcept
+		Parameters::UserContent* getUserContent() noexcept
 		{
 			return userContent.get();
 		}
@@ -413,7 +412,7 @@ namespace cpl
 		/// This function must only be called during initialization, ie. before any audio callbacks are done.
 		/// Additionally, it only makes sense to call it on the UI thread.
 		/// </summary>
-		Parameters::Handle registerParameter(BaseParameter * param, bool shouldBeAutomatable = true, bool canChangeOthers = false, std::string nameContext = "")
+		Parameters::Handle registerParameter(BaseParameter* param, bool shouldBeAutomatable = true, bool canChangeOthers = false, std::string nameContext = "")
 		{
 			if (isSealed)
 				CPL_RUNTIME_EXCEPTION("Parameters registered to the system while it's sealed");
@@ -423,21 +422,21 @@ namespace cpl
 		}
 
 
-		void registerParameterBundle(Parameters::BundleUpdate<ParameterView> * bundle, std::string contextStack = "")
+		void registerParameterBundle(Parameters::BundleUpdate<ParameterView>* bundle, std::string contextStack = "")
 		{
 			contextStack += bundle->getBundleContext();
 			bundle->generateInfo();
-			auto & parameters = bundle->queryParameters();
-			for (auto & parameter : parameters)
+			auto& parameters = bundle->queryParameters();
+			for (auto& parameter : parameters)
 			{
 				parameter.handle = registerParameter(parameter.parameter, parameter.shouldBeAutomatable, parameter.canChangeOthers, contextStack);
 			}
 
-			bundleInstalledReferences.get()->push_back({bundle, &parameters});
+			bundleInstalledReferences.get()->push_back({ bundle, &parameters });
 
 			if (auto bundleChilds = bundle->getNestedChilds())
 			{
-				for (auto & childBundle : *bundleChilds)
+				for (auto& childBundle : *bundleChilds)
 				{
 					registerParameterBundle(childBundle, contextStack);
 				}
@@ -445,7 +444,7 @@ namespace cpl
 
 		}
 
-		void registerSingleParameter(Parameters::SingleUpdate<ParameterView> * singleRef)
+		void registerSingleParameter(Parameters::SingleUpdate<ParameterView>* singleRef)
 		{
 			singleRef->generateInfo();
 			singleRef->parameterQuery->handle = registerParameter(
@@ -453,15 +452,15 @@ namespace cpl
 				singleRef->parameterQuery->shouldBeAutomatable,
 				singleRef->parameterQuery->canChangeOthers
 			);
-			singleInstalledReferences.get()->push_back({singleRef, singleRef->parameterQuery});
+			singleInstalledReferences.get()->push_back({ singleRef, singleRef->parameterQuery });
 		}
 
 		void seal()
 		{
 			isSealed = true;
-			for (auto & ref : *bundleInstalledReferences.get())
+			for (auto& ref : *bundleInstalledReferences.get())
 			{
-				for (auto & parameter : *ref.records)
+				for (auto& parameter : *ref.records)
 				{
 					parameter.uiParameterView = findParameter(parameter.handle);
 				}
@@ -469,7 +468,7 @@ namespace cpl
 				ref.parent->parametersInstalled();
 			}
 
-			for (auto & ref : *singleInstalledReferences.get())
+			for (auto& ref : *singleInstalledReferences.get())
 			{
 				ref.record->uiParameterView = findParameter(ref.record->handle);
 				ref.parent->parametersInstalled();
@@ -483,7 +482,7 @@ namespace cpl
 		/// <summary>
 		/// Only safe to call on the UI thread.
 		/// </summary>
-		void addUIListener(Parameters::Handle globalHandle, UIListener * listener)
+		void addUIListener(Parameters::Handle globalHandle, UIListener* listener)
 		{
 			containedParameters.at(globalHandle - offset).uiListeners.insert(listener);
 		}
@@ -491,7 +490,7 @@ namespace cpl
 		/// <summary>
 		/// Only safe to call on the UI thread.
 		/// </summary>
-		void removeUIListener(Parameters::Handle globalHandle, UIListener * listener)
+		void removeUIListener(Parameters::Handle globalHandle, UIListener* listener)
 		{
 			containedParameters.at(globalHandle - offset).uiListeners.erase(listener);
 		}
@@ -501,9 +500,9 @@ namespace cpl
 		/// If spin is set, the function will always succeed but may spin. May allocate memory.
 		/// If not, the return value indicates whether the operation succeeded.
 		/// </summary>
-		bool addRTListener(RTListener * listener, bool spin = true)
+		bool addRTListener(RTListener* listener, bool spin = true)
 		{
-			for (auto & slot : realtimeListeners)
+			for (auto& slot : realtimeListeners)
 			{
 				auto slotListener = slot.listener.load(std::memory_order_acquire);
 				if (slotListener == listener)
@@ -542,9 +541,9 @@ namespace cpl
 		/// If spin is set, the function will always succeed but may spin.
 		/// If not, the return value indicates whether the operation succeeded.
 		/// </summary>
-		bool removeRTListener(RTListener * listener, bool spin = true)
+		bool removeRTListener(RTListener* listener, bool spin = true)
 		{
-			for (auto & slot : realtimeListeners)
+			for (auto& slot : realtimeListeners)
 			{
 				auto slotListener = slot.listener.load(std::memory_order_acquire);
 
@@ -582,7 +581,7 @@ namespace cpl
 		/// </summary>
 		void updateFromProcessorNormalized(Parameters::Handle globalHandle, T value, Parameters::UpdateFlagsT flags = Parameters::UpdateFlags::All)
 		{
-			ParameterView & p = containedParameters.at(globalHandle - offset);
+			ParameterView& p = containedParameters.at(globalHandle - offset);
 
 			p.parameter->setValue(value);
 			value = p.parameter->getValue();
@@ -606,7 +605,7 @@ namespace cpl
 		/// </summary>
 		void updateFromHostNormalized(Parameters::Handle globalHandle, T value, Parameters::UpdateFlagsT flags = Parameters::UpdateFlags::All)
 		{
-			ParameterView & p = containedParameters.at(globalHandle - offset);
+			ParameterView& p = containedParameters.at(globalHandle - offset);
 
 			p.parameter->setValue(value);
 
@@ -625,7 +624,7 @@ namespace cpl
 		/// </summary>
 		void updateFromUINormalized(Parameters::Handle globalHandle, T value, Parameters::UpdateFlagsT flags = Parameters::UpdateFlags::All)
 		{
-			ParameterView & p = containedParameters.at(globalHandle - offset);
+			ParameterView& p = containedParameters.at(globalHandle - offset);
 			p.parameter->setValue(value);
 			value = p.parameter->getValue();
 
@@ -719,7 +718,7 @@ namespace cpl
 			return containedParameters.size();
 		}
 
-		ParameterView * findParameter(Parameters::Handle globalHandle)
+		ParameterView* findParameter(Parameters::Handle globalHandle)
 		{
 			if (!isSealed)
 				CPL_RUNTIME_EXCEPTION("ParameterView being acquired while the system isn't sealed");
@@ -732,15 +731,18 @@ namespace cpl
 			return nullptr;
 		}
 
-		ParameterView * findParameter(const std::string_view name) noexcept
+		ParameterView* findParameter(const std::string_view name) noexcept
 		{
 			if (!isSealed)
 				CPL_RUNTIME_EXCEPTION("ParameterView being acquired while the system isn't sealed");
 			return findParameter(mapName(name));
 		}
 
-		const std::string & getName() const noexcept { return groupName; }
-		const std::string & getExportPrefix() const noexcept { return prefix; }
+		const std::string& getName() const noexcept { return groupName; }
+		const std::string& getExportPrefix() const noexcept { return prefix; }
+
+		typename std::vector<ParameterView>::iterator begin() { return containedParameters.begin(); }
+		typename std::vector<ParameterView>::iterator end() { return containedParameters.end(); }
 
 	private:
 

@@ -98,6 +98,9 @@ namespace cpl
 				{
 					// 7 == state size of all members
 					using namespace cpl;
+					using namespace cpl::simd;
+
+					CPL_RUNTIME_ASSERTION(sampleRate > 0);
 
 					const auto minWindowSize = std::min(minNSize, maxNSize);
 					const auto maxWindowSize = std::max(minNSize, maxNSize);
@@ -139,18 +142,18 @@ namespace cpl
 
 							// 3 dB law bandwidth of complex resonator
 							// see jos' paper
-							auto const r = exp(-M_PI * hDiff / sampleRate);
+							auto const r = exp(-consts<T>::pi * hDiff / sampleRate);
 
-							N[k] = 1.0 / (1 - r);
+							N[k] = consts<T>::one / (1 - r);
 
 							for (std::size_t v = 0; v < numVectors; ++v)
 							{
 								// so basically, for doing frequency-domain windowing using DFT-coefficients of the windows, we need filters that are linearly
 								// spaced around the frequency like the FFT. DFT bins are spaced linearly like 0.5 / N.
-								auto const omega = (2 * M_PI * (mappedHz[k] + Math::mapAroundZero<Scalar>(v, numVectors) * hDiff * 0.5)) / sampleRate;
+								auto const omega = (consts<T>::tau * (mappedHz[k] + Math::mapAroundZero<Scalar>(v, numVectors) * hDiff * consts<T>::half)) / sampleRate;
 
-								auto const realPart = r * cos(omega);
-								auto const imagPart = r * sin(omega);
+								auto const realPart = r * std::cos(omega);
+								auto const imagPart = r * std::sin(omega);
 
 								coeff[v * vC + k + nR * real] = realPart; // coeffs.c[0].real()
 								coeff[v * vC + k + nR * imag] = imagPart; // coeffs.c[0].imag()
@@ -435,7 +438,7 @@ namespace cpl
 				{
 					for (std::size_t k = 0; k < maxResonators; k++)
 					{
-						Scalar gainCoeff = scale / (constant.N[k] * 0.5); // 2^-3 (3 vectors)
+						Scalar gainCoeff = scale / (constant.N[k] * T(0.5)); // 2^-3 (3 vectors)
 
 						Scalar realPart(0), imagPart(0);
 

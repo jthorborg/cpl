@@ -31,8 +31,9 @@
 
 #ifndef _CDISPLAYSETUP_H
 #define _CDISPLAYSETUP_H
-#include "../Common.h"
+
 #include "SubpixelRendering.h"
+#include "../gui/Tools.h"
 #include <vector>
 #include <memory>
 

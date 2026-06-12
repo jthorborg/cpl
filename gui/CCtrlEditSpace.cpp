@@ -56,15 +56,16 @@ namespace cpl
 	}
 
 	CCtrlEditSpace::CCtrlEditSpace(cpl::CBaseControl * parent)
-		: parentControl(parent), hasBeenInitialized(false), exitAfterAnimation(false), inputValueWasValid(false),
-		toolTip("Control Edit Space: Interface for editing the values of controls precisely."),
-		expanderButton(new CTriangleButton()),
-		compactWidth(120),
-		compactHeight(25),
-		fullWidth(200),
-		fullHeight(120),
-		compactMode(true)
-
+		: parentControl(parent)
+		, exitAfterAnimation(false)
+		, inputValueWasValid(false)
+		, toolTip("Control Edit Space: Interface for editing the values of controls precisely.")
+		, expanderButton(new CTriangleButton())
+		, compactWidth(120)
+		, compactHeight(25)
+		, fullWidth(200)
+		, fullHeight(120)
+		, compactMode(true)
 	{
 		if (!parent)
 		{
@@ -108,7 +109,6 @@ namespace cpl
 
 		exportedControlName = parentControl->bGetExportedName();
 
-		setBounds(0, 0, compactWidth, compactHeight);
 		addChildComponent(intValueLabel);
 		addChildComponent(switchWithOld.get());
 		addAndMakeVisible(iconSucces);
@@ -116,6 +116,11 @@ namespace cpl
 		addAndMakeVisible(fmtValueLabel);
 		addAndMakeVisible(errorVisualizer);
 		addAndMakeVisible(expanderButton.get());
+		setBounds(0, 0, compactWidth, compactHeight);
+
+		// JUCE 8 asserts if you attempt to grab keyboard focus without fully existing yet, 
+		// so have this happen after message queue processing in a bit.
+		cpl::GUIUtils::MainEvent(*this, [this]() { createSimpleViewEditor(); });
 	}
 
 
@@ -124,20 +129,8 @@ namespace cpl
 		return toolTip;
 	}
 
-	inline int getBorder(int size, int maxSize)
-	{
-		return 0;
-	}
-
 	void CCtrlEditSpace::paint(juce::Graphics & g)
 	{
-
-		if (!hasBeenInitialized)
-		{
-			hasBeenInitialized = true;
-			createSimpleViewEditor();
-		}
-
 		g.fillAll(cpl::GetColour(cpl::ColourEntry::Deactivated));
 		g.setColour(cpl::GetColour(cpl::ColourEntry::Separator));
 		g.drawVerticalLine(getWidth() - (compactHeight - 1), 0.f, (float)getHeight() - 1);
@@ -216,7 +209,6 @@ namespace cpl
 
 		}
 		errorVisualizer.setBounds(getBounds().withPosition(0, 0));
-		fmtValueLabel.grabKeyboardFocus();
 	}
 
 	void CCtrlEditSpace::createSimpleViewEditor()
@@ -228,10 +220,6 @@ namespace cpl
 	}
 	void CCtrlEditSpace::editorShown(Label * curLabel, TextEditor & editor)
 	{
-		if (curLabel == &fmtValueLabel)
-			editor.addListener(this);
-		if (curLabel == &intValueLabel)
-			editor.addListener(this);
 		editor.setScrollToShowCursor(false);
 
 	}
@@ -302,28 +290,28 @@ namespace cpl
 		}
 	}
 
-	void CCtrlEditSpace::textEditorReturnKeyPressed(TextEditor & editor)
+	void CCtrlEditSpace::labelTextChanged(juce::Label* labelThatHasChanged)
 	{
-		if (&editor == fmtValueLabel.getCurrentTextEditor())
+		if (labelThatHasChanged == &fmtValueLabel)
 		{
 			// this is where we try to interpret a formatted value
 			// to an internal range.
 
 			// note: we use the value from the editor, because the label may not
 			// have been updated yet.
-			if ((inputValueWasValid = interpretAndSet(editor.getText().toStdString())))
+			if ((inputValueWasValid = interpretAndSet(fmtValueLabel.getText().toStdString())))
 			{
 				animateSucces(&fmtValueLabel);
 			}
 			else
 				animateError(&fmtValueLabel);
 		}
-		else if (&editor == intValueLabel.getCurrentTextEditor())
+		else if (labelThatHasChanged == &intValueLabel)
 		{
 			// here we try to map an input string to [0, 1] range.
 			// the cbasecontrol provides a static method for this
 			iCtrlPrec_t val(0);
-			auto succes = CBaseControl::bMapStringToInternal(editor.getText().toStdString(), val);
+			auto succes = CBaseControl::bMapStringToInternal(fmtValueLabel.getText().toStdString(), val);
 
 
 			if (succes)
@@ -383,7 +371,7 @@ namespace cpl
 	void CCtrlEditSpace::visibilityChanged()
 	{
 
-		fmtValueLabel.showEditor();
+		//fmtValueLabel.showEditor();
 
 		resetToControl();
 
@@ -441,7 +429,7 @@ namespace cpl
 		{
 			return "What the internal value represents.";
 		}
-		return juce::String::empty;
+		return {};
 	}
 	void CCtrlEditSpace::onObjectDestruction(const CBaseControl::ObjectProxy & ctrl)
 	{
@@ -468,16 +456,6 @@ namespace cpl
 	CBaseControl * CCtrlEditSpace::getBaseControl()
 	{
 		return parentControl;
-	}
-	void CCtrlEditSpace::labelTextChanged(juce::Label *labelThatHasChanged)
-	{
-		if (labelThatHasChanged == &fmtValueLabel)
-		{
-			auto const & editText = fmtValueLabel.getText();
-			if (editText.length())
-				interpretAndSet(editText.toStdString());
-
-		}
 	}
 
 	void CCtrlEditSpace::changeListenerCallback(ChangeBroadcaster *source)

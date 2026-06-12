@@ -31,10 +31,11 @@
 #include "MacroConstants.h"
 #include "LibraryOptions.h"
 
-#include "Common.h"
+#include "PlatformSpecific.h"
 #include "simd/simd_consts.cpp"
 
 #ifdef CPL_JUCE
+#include "rendering/CDisplaySetup.cpp"
 
 #include "Resources.cpp"
 //#include "fonts/tahoma.cpp"
@@ -43,7 +44,6 @@
 #include "gui/GUI.cpp"
 // rendering
 #include "rendering/CSubpixelSoftwareGraphics.cpp"
-#include "rendering/CDisplaySetup.cpp"
 
 // io and stuff
 

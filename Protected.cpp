@@ -28,6 +28,7 @@
 *************************************************************************************/
 
 #include "Protected.h"
+#include "PlatformSpecific.h"
 #include "lib/StackBuffer.h"
 #include <memory>
 #include <sstream>
@@ -86,6 +87,56 @@ namespace cpl
 		return buf;
 	}
 
+#ifndef CPL_WINDOWS
+	XWORD StatusCodeToXWORD(CProtected::CSystemException::Status code)
+	{
+		return (XWORD)code;
+	}
+#else
+	XWORD StatusCodeToXWORD(CProtected::CSystemException::Status code)
+	{
+		switch (code)
+		{
+		case CProtected::CSystemException::Status::access_violation: return EXCEPTION_ACCESS_VIOLATION;
+		case CProtected::CSystemException::Status::intdiv_zero: return EXCEPTION_INT_DIVIDE_BY_ZERO;
+		case CProtected::CSystemException::Status::fdiv_zero: return EXCEPTION_FLT_DIVIDE_BY_ZERO;
+		case CProtected::CSystemException::Status::finvalid: return EXCEPTION_FLT_INVALID_OPERATION;
+		case CProtected::CSystemException::Status::fdenormal: return EXCEPTION_FLT_DENORMAL_OPERAND;
+		case CProtected::CSystemException::Status::finexact: return EXCEPTION_FLT_INEXACT_RESULT;
+		case CProtected::CSystemException::Status::foverflow: return EXCEPTION_FLT_OVERFLOW;
+		case CProtected::CSystemException::Status::funderflow: return EXCEPTION_FLT_UNDERFLOW;
+		case CProtected::CSystemException::Status::intoverflow: return EXCEPTION_INT_OVERFLOW;
+		case CProtected::CSystemException::Status::undefined_behaviour: return EXCEPTION_ILLEGAL_INSTRUCTION;
+		}
+
+		CPL_UNREACHABLE();
+
+		return -1;
+	}
+
+	CProtected::CSystemException::Status XWORDExceptionToStatusCode(XWORD code)
+	{
+		switch (code)
+		{
+		case EXCEPTION_ACCESS_VIOLATION: return CProtected::CSystemException::Status::access_violation;
+		case EXCEPTION_INT_DIVIDE_BY_ZERO: return CProtected::CSystemException::Status::intdiv_zero;
+		case EXCEPTION_FLT_DIVIDE_BY_ZERO: return CProtected::CSystemException::Status::fdiv_zero;
+		case EXCEPTION_FLT_INVALID_OPERATION: return CProtected::CSystemException::Status::finvalid;
+		case EXCEPTION_FLT_DENORMAL_OPERAND: return CProtected::CSystemException::Status::fdenormal;
+		case EXCEPTION_FLT_INEXACT_RESULT: return CProtected::CSystemException::Status::finexact;
+		case EXCEPTION_FLT_OVERFLOW: return CProtected::CSystemException::Status::foverflow;
+		case EXCEPTION_FLT_UNDERFLOW: return CProtected::CSystemException::Status::funderflow;
+		case EXCEPTION_INT_OVERFLOW: return CProtected::CSystemException::Status::intoverflow;
+		case EXCEPTION_ILLEGAL_INSTRUCTION: return CProtected::CSystemException::Status::undefined_behaviour;
+		}
+
+		CPL_UNREACHABLE();
+
+		return CProtected::CSystemException::Status::access_violation;
+	}
+
+#endif
+
 	/*********************************************************************************************
 
 		Formats a string and returns it. It explains what went wrong.
@@ -99,7 +150,7 @@ namespace cpl
 		base << "Non-software exception at 0x" << std::hex << e.data.faultAddr
 			<< " (at image base " + formatDifferenceAddress(imageBase, e.data.faultAddr) + ")" << newl;
 
-		base << "Exception code: " << e.data.exceptCode
+		base << "Exception code: " << StatusCodeToXWORD(e.data.exceptCode)
 			<< ", actual code: " << e.data.actualCode
 			<< ", extra info: " << e.data.extraInfoCode << newl;
 
@@ -107,25 +158,25 @@ namespace cpl
 
 		switch (e.data.exceptCode)
 		{
-			case CSystemException::status::intdiv_zero:
+			case CSystemException::Status::intdiv_zero:
 				return base.str() + "An integral division-by-zero was performed";
-			case CSystemException::status::funderflow:
+			case CSystemException::Status::funderflow:
 				return base.str() + "A floating point operation resulted in underflow";
-			case CSystemException::status::foverflow:
+			case CSystemException::Status::foverflow:
 				return base.str() + "A floating point operation resulted in overflow";
-			case CSystemException::status::finexact:
+			case CSystemException::Status::finexact:
 				return base.str() + "A floating point operation's result cannot be accurately expressed";
-			case CSystemException::status::finvalid:
+			case CSystemException::Status::finvalid:
 				return base.str() + "One of the operands for a floating point operation was invalid (typically negative numbers for sqrt, exp, log)";
-			case CSystemException::status::fdiv_zero:
+			case CSystemException::Status::fdiv_zero:
 				return base.str() + "A floating point division-by-zero was performed";
-			case CSystemException::status::fdenormal:
+			case CSystemException::Status::fdenormal:
 				return base.str() + "One of the operands for a floating point operation was denormal (too small to be represented)";
-			case CSystemException::status::nullptr_from_plugin:
+			case CSystemException::Status::nullptr_from_plugin:
 				return base.str() + "An API function was called with 'this' as an null pointer.";
-			case CSystemException::status::undefined_behaviour:
+			case CSystemException::Status::undefined_behaviour:
 				return base.str() + "Undefined behaviour was executed (unreachable code inserted by compiler)";
-			case CSystemException::status::access_violation:
+			case CSystemException::Status::access_violation:
 			{
 				std::stringstream fmt;
 				#ifndef CPL_MSVC
@@ -242,11 +293,6 @@ namespace cpl
 			exceptionAddress = exp->ExceptionRecord->ExceptionAddress;
 		switch (_code)
 		{
-			case OSCustomRaiseCode:
-			{
-				e = CSystemException::Storage::create(OSCustomRaiseCode, true, exceptionAddress, nullptr, 0xDEAD);
-				break;
-			}
 			case EXCEPTION_ILLEGAL_INSTRUCTION:
 			{
 				if (exceptionAddress)
@@ -255,7 +301,7 @@ namespace cpl
 
 					if (*assembly == 0x0B0F) // ud2 - #UD undefined behaviour, compiler trigger.
 					{
-						e = CSystemException::Storage::create(exceptCode, false, exceptionAddress, nullptr, additionalCode);
+						e = CSystemException::Storage::create(XWORDExceptionToStatusCode(_code), false, exceptionAddress, nullptr, additionalCode);
 						return EXCEPTION_EXECUTE_HANDLER;
 					}
 				}
@@ -273,7 +319,7 @@ namespace cpl
 					additionalCode = static_cast<int>(exp->ExceptionRecord->ExceptionInformation[0]);
 				}
 
-				e = CSystemException::Storage::create(exceptCode, safeToContinue, exceptionAddress, (const void *)addr, additionalCode);
+				e = CSystemException::Storage::create(XWORDExceptionToStatusCode(_code), safeToContinue, exceptionAddress, (const void *)addr, additionalCode);
 
 				return EXCEPTION_EXECUTE_HANDLER;
 			}
@@ -289,7 +335,7 @@ namespace cpl
 			case EXCEPTION_FLT_DENORMAL_OPERAND:
 				_clearfp();
 				safeToContinue = true;
-				e = CSystemException::Storage::create(exceptCode, safeToContinue, exceptionAddress);
+				e = CSystemException::Storage::create(XWORDExceptionToStatusCode(_code), safeToContinue, exceptionAddress);
 
 				return EXCEPTION_EXECUTE_HANDLER;
 
@@ -373,6 +419,16 @@ namespace cpl
 
 	}
 	#endif
+
+	void CProtected::CSystemException::reraise() const
+	{
+#ifdef CPL_WINDOWS
+		RaiseException(static_cast<DWORD>(data.exceptCode), 0, 0, nullptr);
+#else
+		raise(static_cast<int>(data.exceptCode));
+#endif
+	}
+
 	XWORD CProtected::structuredExceptionHandlerTraceInterceptor(CProtected::PreembeddedFormatter & output, XWORD code, CSystemException::Storage & e, void * systemInformation)
 	{
 
@@ -483,7 +539,7 @@ namespace cpl
                         if (*assembly == 0x0B0F) // ud2 - #UD undefined behaviour, compiler trigger.
                         {
                             threadData.currentExceptionData = CSystemException::Storage::create(
-                                CSystemException::undefined_behaviour,
+                                CSystemException::Status::undefined_behaviour,
                                 safeToContinue,
                                 nullptr,
                                 fault_address,
@@ -510,7 +566,7 @@ namespace cpl
 				{
 
 					threadData.currentExceptionData = CSystemException::Storage::create(
-						CSystemException::access_violation,
+						CSystemException::Status::access_violation,
 						safeToContinue,
 						nullptr,
 						fault_address,
@@ -535,32 +591,32 @@ namespace cpl
 					// exceptions that happened are still set in the status flags - always clear these,
 					// or the exception might throw again
 					std::feclearexcept(FE_ALL_EXCEPT);
-					CSystemException::status code_status;
+					CSystemException::Status code_status;
 					switch (ecode)
 					{
 						case FPE_FLTDIV:
-							code_status = CSystemException::status::fdiv_zero;
+							code_status = CSystemException::Status::fdiv_zero;
 							break;
 						case FPE_FLTOVF:
-							code_status = CSystemException::status::foverflow;
+							code_status = CSystemException::Status::foverflow;
 							break;
 						case FPE_FLTUND:
-							code_status = CSystemException::status::funderflow;
+							code_status = CSystemException::Status::funderflow;
 							break;
 						case FPE_FLTRES:
-							code_status = CSystemException::status::finexact;
+							code_status = CSystemException::Status::finexact;
 							break;
 						case FPE_FLTINV:
-							code_status = CSystemException::status::finvalid;
+							code_status = CSystemException::Status::finvalid;
 							break;
 						case FPE_FLTSUB:
-							code_status = CSystemException::status::intsubscript;
+							code_status = CSystemException::Status::intsubscript;
 							break;
 						case FPE_INTDIV:
-							code_status = CSystemException::status::intdiv_zero;
+							code_status = CSystemException::Status::intdiv_zero;
 							break;
 						case FPE_INTOVF:
-							code_status = CSystemException::status::intoverflow;
+							code_status = CSystemException::Status::intoverflow;
 							break;
 					}
 

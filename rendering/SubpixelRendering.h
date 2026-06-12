@@ -32,6 +32,7 @@
 #include <cstdint>
 #include "../Types.h"
 #include "DisplayOrientation.h"
+#include <limits>
 
 namespace cpl
 {
@@ -353,7 +354,7 @@ namespace cpl
 			typedef std::uint8_t Pixel;
 			// intermediate type for multiplications
 			typedef std::uint16_t IntPixel;
-			static const std::size_t PixelMax = UCHAR_MAX;
+			static const std::size_t PixelMax = std::numeric_limits<unsigned char>::max();
 			static const std::size_t size = PixelMax >> 4;
 
 			typedef std::uint_fast16_t WType;

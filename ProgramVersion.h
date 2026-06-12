@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <string>
 #include <algorithm>
+#include <limits>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -83,11 +84,12 @@ namespace cpl
 			Version ret;
 			int parts[3];
 
-			std::sscanf(version.c_str(), "%d.%d.%d", &parts[0], &parts[1], &parts[2]);
-
-			ret.parts.major = (std::uint16_t) std::clamp<int>(parts[0], 0, std::numeric_limits<std::uint16_t>::max());
-			ret.parts.minor = (std::uint16_t) std::clamp<int>(parts[1], 0, std::numeric_limits<std::uint16_t>::max());
-			ret.parts.build = (std::uint32_t) std::clamp<int>(parts[2], 0, std::numeric_limits<std::uint32_t>::max());
+			if (std::sscanf(version.c_str(), "%d.%d.%d", &parts[0], &parts[1], &parts[2]) == 3)
+			{
+				ret.parts.major = (std::uint16_t)std::clamp<int>(parts[0], 0, std::numeric_limits<std::uint16_t>::max());
+				ret.parts.minor = (std::uint16_t)std::clamp<int>(parts[1], 0, std::numeric_limits<std::uint16_t>::max());
+				ret.parts.build = (std::uint32_t)std::clamp<int>(parts[2], 0, std::numeric_limits<std::uint32_t>::max());
+			}
 
 			return ret;
 		}

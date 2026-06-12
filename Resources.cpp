@@ -29,6 +29,7 @@
 
 #include "Resources.h"
 #include "Misc.h"
+#include "PlatformMisc.h"
 
 namespace cpl
 {
@@ -63,18 +64,16 @@ namespace cpl
 		// handle scalable vector graphics
 		if (f.getFileExtension() == ".svg")
 		{
-			internalImage = juce::Image::null;
-			juce::ScopedPointer<juce::XmlElement> element = juce::XmlDocument::parse(f);
-			if (element.get())
+			internalImage = {};
+
+			if (auto element = juce::XmlDocument::parse(f); element)
 			{
 				drawableImage = juce::Drawable::createFromSVG(*element);
 				return true;
 			}
 			else
 			{
-				auto drawable = new juce::DrawableImage();
-				drawable->setImage(juce::Image::null);
-				drawableImage = drawable;
+				drawableImage.reset(new juce::DrawableImage());
 			}
 		}
 		else
@@ -82,18 +81,13 @@ namespace cpl
 			internalImage = juce::ImageFileFormat::loadFrom(f);
 
 			if (internalImage.isValid()) {
-				auto drawable = new juce::DrawableImage();
-				drawable->setImage(internalImage);
-				drawableImage = drawable;
+				drawableImage.reset(new juce::DrawableImage(internalImage));
 				return true;
 			}
 			else
 			{
 				// set a default image?
-
-				auto drawable = new juce::DrawableImage();
-				drawable->setImage(juce::Image::null);
-				drawableImage = drawable;
+				drawableImage.reset(new juce::DrawableImage());
 			}
 		}
 		return false;
@@ -126,19 +120,18 @@ namespace cpl
 		{
 			return &it->second;
 		}
-
-
+	
 		std::string dir = Misc::DirectoryPath() + "/resources/";
-
 		std::string key { name };
 
 		auto & image = resources[key];
 		std::string path = (dir + key);
 		image.setPath(path);
+			
 		if (!image.load())
 		{
 			Misc::MsgBox(
-				"Error loading resource " + path + ":" + newl + GetLastOSErrorMessage() + newl + 
+				"Error loading resource " + path + ":\n" + GetLastOSErrorMessage() + "\n" + 
 				"Perhaps you didn't include the folder the plugin arrived in?", 
 				programInfo.name + " error!", 
 				Misc::MsgIcon::iStop

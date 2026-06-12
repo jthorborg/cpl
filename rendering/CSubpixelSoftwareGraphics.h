@@ -30,6 +30,11 @@
 
 #ifndef _CSUBPIXELSOFTWAREGRAPHICS_H
 #define _CSUBPIXELSOFTWAREGRAPHICS_H
+
+// #define CPL_ENABLE_CSUBPIXELGRAPHICS 1
+
+#ifdef CPL_ENABLE_CSUBPIXELGRAPHICS
+
 #include "../Common.h"
 #include "SubpixelRendering.h"
 
@@ -41,8 +46,7 @@ namespace cpl
 		class CDisplaySetup;
 
 		class CSubpixelSoftwareGraphics
-			:
-			public juce::LowLevelGraphicsSoftwareRenderer
+			: public juce::LowLevelGraphicsSoftwareRenderer
 		{
 
 		public:
@@ -53,21 +57,28 @@ namespace cpl
 			virtual ~CSubpixelSoftwareGraphics() {};
 
 			// overrides
-			virtual void drawGlyph(int glyphNumber, const AffineTransform & z) override;
+
+			void drawGlyphs(juce::Span<const uint16_t> glyphs,
+				juce::Span<const juce::Point<float>> positions,
+				const juce::AffineTransform& t) override;
 
 			// the height in points where to stop drawing subpixel aa-glyphs
 			static void setAntialiasingTransition(float heightToStopSubpixels);
 
 		private:
 
-			bool tryToDrawGlyph(int glyphNumber, const AffineTransform & z);
+			bool tryToDrawGlyph(int glyphNumber, const juce::AffineTransform & z);
+			bool RenderEdgeLayer(LCDMatrixOrientation monitorMatrix, const juce::Point<float>& pos, const juce::EdgeTable& outlines);
 			static float maxHeight;
-			Point<int> origin;
+			juce::Point<int> origin;
 			const juce::Image & buffer;
-			const RectangleList<int> & startingClip;
+			const juce::RectangleList<int> & startingClip;
 			CDisplaySetup & displayInfo;
 
 		};
 	}; // {} rendering
 }; // {} cpl
+
+#endif
+
 #endif

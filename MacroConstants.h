@@ -29,7 +29,7 @@
 
 *************************************************************************************/
 
-#ifndef CPL_MACROCONSTANTS_H
+#if defined(__cplusplus) && !defined(CPL_MACROCONSTANTS_H)
 	#define CPL_MACROCONSTANTS_H
 	#include <cstdint>
 
@@ -43,12 +43,21 @@
 		#endif
 	#endif
 
-	#if defined(_WIN64) || defined(__x86_64__) || defined(__x86_64)
+	#if defined(__ARM_ARCH) || defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
+		#define CPL_ARCH "ARM"
+		#define CPL_M_ARM 1
+	#else
+		#define CPL_ARCH "x86"
+		#define CPL_M_X86 1
+	#endif
+
+	#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__)
+
 		typedef std::uint64_t XWORD;
 		#define CPL_M_64BIT 1
 		#define CPL_M_64BIT_ CPL_M_64BIT
 
-		#define CPL_ARCH_STRING "64-bit"
+		#define CPL_ARCH_STRING "64-bit" CPL_ARCH
 	#else
 		#define __M_32BIT_
 		#define CPL_M_32BIT 1
@@ -56,7 +65,7 @@
 		#define CPL_M_32BIT_ CPL_M_32BIT
 
 		typedef std::uint32_t XWORD;
-		#define CPL_ARCH_STRING "32-bit"
+		#define CPL_ARCH_STRING "32-bit" CPL_ARCH
 	#endif
 
 	#if defined(_WIN32) || defined (_WIN64)
@@ -64,7 +73,7 @@
 		#define CPL_WINDOWS
 		#define CPL_PROG_EXTENSION ".dll"
 		#define CPL_DIR_SEP '\\'
-	#elif defined (__MACH__) && (__APPLE__)
+	#elif defined (__MACH__) || (__APPLE__)
 		#define CPL_DIR_SEP '/'
 		#define CPL_MAC
 		#include <AvailabilityMacros.h>
@@ -99,7 +108,10 @@
 	// gcc or msvc assembly syntax?
 	#ifdef _MSC_VER
 		#define CPL_INTEL_ASSEMBLY
-		#define DBG_BREAK() DebugBreak();
+		#define DBG_BREAK() __debugbreak();
+	#elif defined(__aarch64__) || defined(__arm64__)
+		#define CPL_ATT_ASSEMBLY
+		#define DBG_BREAK() __builtin_debugtrap()
 	#else
 		#define CPL_ATT_ASSEMBLY
 		#define DBG_BREAK() __asm__("int $0x3")
@@ -129,6 +141,7 @@
 		#define CPL_NOEXCEPT_IF_RELEASE
 	#else
 		#define CPL_NOEXCEPT_IF_RELEASE noexcept
+        #define CPL_RELEASE
 	#endif
 
 	/*
@@ -216,6 +229,8 @@
 
 	#elif defined(__llvm__) && defined(__clang__)
 
+        //#define CPL_COMPILER_MULTIPLE_STATICS_SUPPORTED
+
 		// cross-platform size_t specifier for printf-families
 		#define CPL_FMT_SZT "%zu"
 
@@ -254,36 +269,39 @@
 				#define CPL_VECTOR_TARGET
 			#endif
 			#define CPL_COMPILER_SUPPORTS_AVX
+
+			// Enable inclusion of all simd headers.
+			#ifndef __SSE__
+				#define __SSE__
+			#endif
+			#ifndef __SSE2__
+				#define __SSE2__
+			#endif
+			#ifndef __SSE3__
+				#define __SSE3__
+			#endif
+			#ifndef __SSSE3__
+				#define __SSSE3__
+			#endif
+			#ifndef __SSE4_2__
+				#define __SSE4_2__
+			#endif
+			#ifndef __SSE4_1__
+				#define __SSE4_1__
+			#endif
+			#ifndef __AVX__
+				#define __AVX__
+			#endif
+			#ifndef __AVX2__
+				#define __AVX2__
+			#endif
+
 		#else
 			#define CPL_VECTOR_TARGET
-			#warning "Your compiler is out of date. Support for AVX codepaths is partially disabled."
-		#endif
-
-		// Enable inclusion of all simd headers.
-		#ifndef __SSE__
-			#define __SSE__
-		#endif
-		#ifndef __SSE2__
-			#define __SSE2__
-		#endif
-		#ifndef __SSE3__
-			#define __SSE3__
-		#endif
-		#ifndef __SSSE3__
-			#define __SSSE3__
-		#endif
-		#ifndef __SSE4_2__
-			#define __SSE4_2__
-		#endif
-		#ifndef __SSE4_1__
-			#define __SSE4_1__
-		#endif
-		#ifndef __AVX__
-			#define __AVX__
-		#endif
-		#ifndef __AVX2__
-			#define __AVX2__
-		#endif
+            #ifndef CPL_M_ARM
+                #warning "Your compiler is out of date. Support for AVX codepaths is partially disabled."
+            #endif
+        #endif
 
 		#define cwarn(exp) ("warning: " exp)
 

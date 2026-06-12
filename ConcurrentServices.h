@@ -32,14 +32,11 @@
 #ifndef CPL_CONCURRENTSERVICES_H
 #define CPL_CONCURRENTSERVICES_H
 
-#include "Common.h"
 #include <thread>
-#include "Utility.h"
 #include <vector>
 #include <atomic>
 #include <memory>
-#include "Misc.h"
-
+#include "Exceptions.h"
 
 namespace cpl
 {

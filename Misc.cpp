@@ -28,6 +28,7 @@
 *************************************************************************************/
 
 #include "MacroConstants.h"
+#include "PlatformMisc.h"
 #include "Misc.h"
 #include <ctime>
 #include "PlatformSpecific.h"
@@ -62,7 +63,6 @@ namespace cpl
 		int addHandlers();
 
 		static std::string GetDirectoryPath();
-		static int GetInstanceCounter();
 		static int __unusedInitialization = addHandlers();
 		static std::atomic<std::terminate_handler> oldTerminate;
 
@@ -368,6 +368,11 @@ namespace cpl
 			return false;
 		}
 
+		void OutputToDebugger(const string_ref message)
+		{
+			CPL_DEBUGOUT(message.data());
+		}
+
 
 		const char * GetImageBase()
 		{
@@ -411,20 +416,26 @@ namespace cpl
 
 		 *********************************************************************************************/
 		#ifndef CPL_MSVC
-		#ifdef CPL_M_64BIT_
 		__inline__ uint64_t __rdtsc() {
-			uint64_t a, d;
-			__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
-			return (d << 32) | a;
+			#if defined(__x86_64__) || defined(__i386__)
+				#ifdef CPL_M_64BIT_
+					uint64_t a, d;
+					__asm__ volatile ("rdtsc" : "=a" (a), "=d" (d));
+					return (d << 32) | a;
+				#else
+					uint64_t x;
+					__asm__ volatile ("rdtsc" : "=A" (x));
+					return x;
+				#endif
+			#elif defined(__aarch64__) || defined(__arm64__)
+				// ARM64: Use the system counter
+				uint64_t val;
+				__asm__ volatile("mrs %0, cntvct_el0" : "=r" (val));
+				return val;
+			#else
+				#error "Implement rdtsc for your platform"
+			#endif
 		}
-		#else
-		__inline__ uint64_t __rdtsc() {
-			uint64_t x;
-			__asm__ volatile ("rdtsc" : "=A" (x));
-			return x;
-		}
-		#endif
-
 		#endif
 		/*********************************************************************************************
 
@@ -447,6 +458,8 @@ namespace cpl
 
 			#ifdef _WINDOWS_
 			::QueryPerformanceCounter((LARGE_INTEGER*)&t);
+            #elif defined(CPL_MAC) && defined(CPL_JUCE)
+            t = juce::Time::getHighResolutionTicks();
 			#elif defined(CPL_MAC)
 			auto t1 = mach_absolute_time();
 			*(decltype(t1)*)&t = t1;
@@ -458,43 +471,56 @@ namespace cpl
 
 			return t;
 		}
+    
 		double TimeDifference(long long time)
 		{
 			return TimeToMilisecs(TimeCounter() - time);
 		}
+    
+        double TimeDifferenceSeconds(long long time)
+        {
+            return TimeToSeconds(TimeCounter() - time);
+        }
+
+        double TimeToSeconds(long long time)
+        {
+            double ret = 0.0;
+
+            #ifdef _WINDOWS_
+            long long f;
+
+            ::QueryPerformanceFrequency((LARGE_INTEGER*)&f);
+
+            //long long t = TimeCounter();
+            ret = (time) * (1.0 / f);
+            #elif defined(CPL_MAC) && defined(CPL_JUCE)
+            return time / (double)juce::Time::getHighResolutionTicksPerSecond();
+            #elif defined(CPL_MAC)
+            auto t1 = *(decltype(mach_absolute_time())*)&time;
+
+            struct mach_timebase_info tinfo;
+            if (mach_timebase_info(&tinfo) == KERN_SUCCESS)
+            {
+                double hTime2sFactor = tinfo.numer / (tinfo.denom * 1000.0 * 1000.0 * 1000.0);
+                ret = (((t1)* hTime2sFactor));
+            }
+
+            #elif defined(__CPP11__)
+            using namespace std::chrono;
+
+            high_resolution_clock::rep t1;
+            t1 = *(high_resolution_clock::rep *)&time;
+            seconds elapsed(t1);
+            ret = elapsed.count();
+            #endif
+
+            return ret;
+
+        }
 
 		double TimeToMilisecs(long long time)
 		{
-			double ret = 0.0;
-
-			#ifdef _WINDOWS_
-			long long f;
-
-			::QueryPerformanceFrequency((LARGE_INTEGER*)&f);
-
-			//long long t = TimeCounter();
-			ret = (time) * (1000.0 / f);
-			#elif defined(CPL_MAC)
-			auto t1 = *(decltype(mach_absolute_time())*)&time;
-
-			struct mach_timebase_info tinfo;
-			if (mach_timebase_info(&tinfo) == KERN_SUCCESS)
-			{
-				double hTime2nsFactor = (double)tinfo.numer / tinfo.denom;
-				ret = (((t1)* hTime2nsFactor) / 1000.0) / 1000.0;
-			}
-
-			#elif defined(__CPP11__)
-			using namespace std::chrono;
-
-			high_resolution_clock::rep t1;
-			t1 = *(high_resolution_clock::rep *)&time;
-			milliseconds elapsed(t1);
-			ret = elapsed.count();
-			#endif
-
-			return ret;
-
+            return TimeToSeconds(time) * 1000;
 		}
 
 		/*********************************************************************************************
@@ -516,13 +542,7 @@ namespace cpl
 			ctime = gmtime(&timeObj);
 			#endif
 			char buffer[100];
-			// not cross platform.
-			#ifdef CPL_MSVC
-
-			sprintf_s(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
-			#else
-			sprintf(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
-			#endif
+			cpl::sprintfs(buffer, "%01d:%01d:%01d", ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
 			return buffer;
 		}
 
@@ -540,15 +560,83 @@ namespace cpl
 			ctime = gmtime(&timeObj);
 			#endif
 			char buffer[100];
-			// not cross platform.
-			#ifdef CPL_MSVC
-			sprintf_s(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
-			#else
-			sprintf(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
-			#endif
+			cpl::sprintfs(buffer, "%d/%d/%d", ctime->tm_mday, ctime->tm_mon + 1, ctime->tm_year + 1900);
 			return buffer;
 		}
 
+        void _internalAlignedFree(void* obj)
+        {
+            #ifdef CPL_WINDOWS
+            _aligned_free(obj);
+            #else
+            if (obj)
+            {
+                free(((void**)obj)[-1]);
+            }
+            #endif
+        }
+        
+        void* alignedBytesMalloc(std::size_t size, std::size_t alignment)
+        {
+            void * ptr = nullptr;
+            #ifdef CPL_WINDOWS
+            ptr = _aligned_malloc(size, alignment);
+            #else
+            // : http://stackoverflow.com/questions/196329/osx-lacks-memalign
+            void *mem = malloc(size + (alignment - 1) + sizeof(void*));
+
+            char *amem = ((char*)mem) + sizeof(void*);
+            amem += ((alignment - ((uintptr_t)amem & (alignment - 1))) & (alignment - 1));
+
+            ((void**)amem)[-1] = mem;
+            ptr = amem;;
+            #endif
+
+            return ptr;
+        }
+    
+        void* _internalAlignedRealloc(void* ptr, std::size_t elementSize, std::size_t numObjects, std::size_t alignment)
+        {
+            #ifdef CPL_WINDOWS
+            return _aligned_realloc(ptr, numObjects * elementSize, alignment);
+            #else
+            #ifdef CPL_MAC
+            // all allocations on OS X are aligned to 16-byte boundaries
+            // NOTE: removed, as alignedFree doesn't account for this
+            //if(alignment <= 16)
+            //    return reinterpret_cast<Type *>(std::realloc(ptr, numObjects * sizeof(Type)));
+            #endif
+            // https://github.com/numpy/numpy/issues/5312
+            void *p1, **p2, *base;
+            std::size_t
+                old_offs,
+                offs = alignment - 1 + sizeof(void*),
+                n = elementSize * numObjects;
+
+            if (ptr != nullptr)
+            {
+                base = *(((void**)ptr) - 1);
+                if ((p1 = std::realloc(base, n + offs)) == nullptr)
+                    return nullptr;
+                if (p1 == base)
+                    return ptr;
+                p2 = (void**)(((std::uintptr_t)(p1) + offs) & ~(alignment - 1));
+                old_offs = (size_t)((std::uintptr_t)ptr - (std::uintptr_t)base);
+                std::memmove(p2, (char*)p1 + old_offs, n);
+            }
+            else
+            {
+                if ((p1 = std::malloc(n + offs)) == nullptr)
+                    return nullptr;
+                p2 = (void**)(((std::uintptr_t)(p1) + offs) & ~(alignment - 1));
+            }
+            *(p2 - 1) = p1;
+            return p2;
+
+            #endif
+        }
+
+    
 		/*********************************************************************************************
 
 			'private' function, initializes the global DirectoryPath

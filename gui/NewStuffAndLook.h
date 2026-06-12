@@ -534,8 +534,8 @@ namespace cpl
 			{
 				if (panelIsClosed)
 				{
-					triangleVertices.applyTransform(AffineTransform::identity.rotated((float)M_PI / 2, originCenter.getX(), originCenter.getY()));
-					//triangleVertices.applyTransform(AffineTransform::identity.rotated(rotation, originCenter.getX(), originCenter.getY()));
+					triangleVertices.applyTransform(AffineTransform().rotated((float)M_PI / 2, originCenter.getX(), originCenter.getY()));
+					//triangleVertices.applyTransform(AffineTransform().rotated(rotation, originCenter.getX(), originCenter.getY()));
 				}
 				else
 				{
@@ -546,15 +546,15 @@ namespace cpl
 			{
 				if (panelIsClosed)
 				{
-					triangleVertices.applyTransform(AffineTransform::identity.rotated((float)M_PI / 2, originCenter.getX(), originCenter.getY()));
+					triangleVertices.applyTransform(AffineTransform().rotated((float)M_PI / 2, originCenter.getX(), originCenter.getY()));
 				}
 				else
 				{
-					triangleVertices.applyTransform(AffineTransform::identity.rotated((float)-M_PI, originCenter.getX(), originCenter.getY()));
+					triangleVertices.applyTransform(AffineTransform().rotated((float)-M_PI, originCenter.getX(), originCenter.getY()));
 				}
 			}
 
-			//triangleVertices.applyTransform(AffineTransform::identity.rotated(rotation, originCenter.getX(), originCenter.getY()));
+			//triangleVertices.applyTransform(AffineTransform().rotated(rotation, originCenter.getX(), originCenter.getY()));
 
 		}
 		int getMouseHoverButton()
@@ -648,7 +648,7 @@ namespace cpl
 			);
 
 			triangleVertices.applyTransform(
-				AffineTransform::identity.rotated(dirs[getToggleState()] * float(M_PI * 0.5), getWidth() * 0.5f, getHeight() * 0.5f)
+				AffineTransform().rotated(dirs[getToggleState()] * float(M_PI * 0.5), getWidth() * 0.5f, getHeight() * 0.5f)
 			);
 		}
 
@@ -664,7 +664,7 @@ namespace cpl
 	{
 	public:
 
-		static const size_t iconOffset = 3;
+		static const int iconOffset = 3;
 
 		virtual void paint(juce::Graphics & g) override
 		{

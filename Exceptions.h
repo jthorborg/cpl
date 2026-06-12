@@ -40,7 +40,6 @@
 #include "MacroConstants.h"
 #include "ProgramInfo.h"
 #include "Core.h"
-#include "PlatformSpecific.h"
 
 namespace cpl
 {
@@ -52,6 +51,13 @@ namespace cpl
 	void CheckPruneExceptionLogFile();
 	void LogException(const string_ref errorMessage);
 	void CrashIfUserDoesntDebug(const string_ref errorMessage);
+
+    namespace Misc
+    {
+        bool IsBeingDebugged();
+		void OutputToDebugger(const string_ref message);
+    };
+
 	bool IsDebuggerAttached();
 
 	class CPLRuntimeException : public std::runtime_error
@@ -84,7 +90,7 @@ namespace cpl
 			{ \
 				std::string message = std::string("Runtime exception (" #exceptionT ") in ") + ::cpl::programInfo.name + " (" + ::cpl::programInfo.version.toString() + "): \"" + msg + "\" in " + file + ":" + ::std::to_string(line) + " -> " + funcname; \
 				auto e = exceptionExpression;\
-				CPL_DEBUGOUT((message + "\n").c_str()); \
+				cpl::Misc::OutputToDebugger(message + "\n"); \
 				cpl::LogException(message); \
 				if(cpl::IsDebuggerAttached()) DBG_BREAK(); \
 				bool doAbort = isassert; \

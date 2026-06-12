@@ -751,13 +751,14 @@ namespace cpl
 		CPL_SIMD_FUNC typename std::enable_if<std::is_same<typename scalar_of<V>::type, float>::value, V>::type
 			sin(V x)
 		{ // any x
-			V  y;
-
-			using VConsts = cpl::simd::consts<V>;
 
 			auto const elements = elements_of<V>::value;
-
 			typedef typename to_integer<V>::type VInt;
+
+			using VConsts = cpl::simd::consts<V>;
+			using VIConsts = cpl::simd::consts<VInt>;
+
+			V  y;
 
 			/* take the absolute value and extract the sign bit */
 			V sign_bit = simd::sign(x);
@@ -784,7 +785,7 @@ namespace cpl
 			// get the swap sign flag
 			//	swap_sign_sin = input & 4 (swap sign each M_PI multiple)
 			//
-			auto has_fourth_bit = vand(j_as_float, four_as_int) == four_as_int;
+			V has_fourth_bit = vand(j_as_float, four_as_int) == four_as_int;
 			V swap_sign_bit = vand(has_fourth_bit, VConsts::sign_bit);
 
 			/* get the polynom selection mask
@@ -870,10 +871,12 @@ namespace cpl
 			// store the integer part of y in mm0
 			VInt j = vdouble_cvt_int32(y + VConsts::one);
 
-
+#ifdef CPL_M_X86
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
 				_mm256_zeroupper();
+			}
+#endif
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even
@@ -1099,9 +1102,12 @@ namespace cpl
 			// store the integer part of y in mm0
 			VInt j = vdouble_cvt_int32(y + VConsts::one);
 
+#ifdef CPL_M_X86
 			// jump out of avx here.
-			if (std::is_same<V, v4sd>::value)
+			if (std::is_same<V, v4sd>::value) {
 				_mm256_zeroupper();
+			}
+#endif
 
 			// j=(j+1) & (~1) (see the cephes sources)
 			//	add one and make it even

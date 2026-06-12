@@ -34,12 +34,13 @@
 #include "../Common.h"
 #include <map>
 #include <vector>
+#include <memory>
 
 namespace cpl
 {
 	#ifdef CPL_JUCE
 	typedef juce::Colour CColour;
-	typedef juce::Colours CColours;
+	namespace CColours = juce::Colours;
 	typedef juce::Point<int> CPoint;
 	typedef juce::Rectangle<int> CRect;
 	typedef juce::Component GraphicComponent;
@@ -116,10 +117,11 @@ namespace cpl
 		static CLookAndFeel_CPL & defaultLook();
 		// overrides
 		juce::Typeface::Ptr getTypefaceForFont(juce::Font const& font) override;
-		virtual juce::LowLevelGraphicsContext * createGraphicsContext(
-			const Image &imageToRenderOn,
-			const Point< int > &origin,
-			const RectangleList< int > &initialClip) override;
+		std::unique_ptr<juce::LowLevelGraphicsContext> createGraphicsContext(
+			const Image& imageToRenderOn,
+			juce::Point<int> origin,
+			const RectangleList<int>& initialClip) override;
+
 		juce::Font getPopupMenuFont() override;
 		juce::Font getComboBoxFont(ComboBox &) override;
 		void drawComboBox(

@@ -27,23 +27,18 @@
  
  *************************************************************************************/
 
-// i dont know why. i seriously dont.
-// but all hell breaks loose if this is not here.
-//#define Point CarbonDummyPointName
-
+// Include JUCE headers first to avoid OpenGL conflicts
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/NSString.h>
 #import <AppKit/NSPanel.h>
 #import <AppKit/AppKit.h>
 #import <IOKit/IOKitLib.h>
 #import <IOKit/graphics/IOGraphicsLib.h>
+#include <string.h>
 
-#include "MacSupport.h"
-#include "Misc.h"
+#include "PlatformMisc.h"
 #include "Exceptions.h"
 
-#include <string.h>
-#include "Common.h"
 /*********************************************************************************************
  
 	Spawns a messagebox using NSRunAlertPanel

@@ -19,7 +19,7 @@
 #endif /* _MSC_VER */
 
 #include <math.h> /* sin() */
-#include <emmintrin.h>
+#include "../Types.h"
 #ifdef WIN32
 # define ALIGN16 __declspec(align(16))
 #else

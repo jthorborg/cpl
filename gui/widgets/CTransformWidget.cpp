@@ -140,7 +140,7 @@ namespace cpl
 				}
 			}
 		}
-		return juce::String::empty;
+		return {};
 	}
 
 	void CTransformWidget::inputCommand(int x, int y, const String & data)
@@ -308,7 +308,7 @@ namespace cpl
 		{
 			for (unsigned x = 0; x < 3; ++x)
 			{
-				g.drawText(texts[x], x * (elementWidth + 15), elementHeight + y * (elementHeight * 2), 10, elementHeight, juce::Justification::centred);
+				g.drawText(texts[x], x * (elementWidth + 15), elementHeight + y * (elementHeight * 2), 12, elementHeight, juce::Justification::centredLeft);
 			}
 		}
 	}

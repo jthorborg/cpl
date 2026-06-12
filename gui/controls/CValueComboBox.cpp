@@ -128,7 +128,7 @@ namespace cpl
 		for (const auto & str : values)
 		{
 			counter++;
-			if (currentIndex == str)
+			if (currentIndex == juce::CharPointer_UTF8(str.c_str()))
 				newIndex = counter;
 			arr.add(str);
 		}

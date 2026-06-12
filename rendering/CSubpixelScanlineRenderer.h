@@ -88,7 +88,7 @@ namespace cpl
 				:
 				data(data),
 				y(0),
-				origin((int)cpl::Math::floorToNInf(where.x), cpl::Math::round<int>(where.y)),
+				origin(cpl::Math::floorToNInf<int>(where.x), cpl::Math::round<int>(where.y)),
 				alphaMap(),
 				alphaPos(-1),
 				subXOff(cpl::Math::round<IntType>(cpl::Math::frac(where.x) * 3)),

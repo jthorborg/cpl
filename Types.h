@@ -30,15 +30,28 @@
 #ifndef CPL_TYPES_H
 #define CPL_TYPES_H
 
+#include "MacroConstants.h"
 #include <string>
 #include <type_traits>
 #include <cstdint>
 #include <errno.h>
-#include "PlatformSpecific.h"
+
+#ifdef CPL_M_X86
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <xmmintrin.h>
-#include <emmintrin.h>
+#else
+// Use SIMDE for cross-platform SIMD compatibility
+// Enable native type aliases for SIMDE on ARM64
+#define SIMDE_ENABLE_NATIVE_ALIASES
+#include "external/simde/simde/x86/mmx.h"
+#include "external/simde/simde/x86/sse.h"
+#include "external/simde/simde/x86/sse2.h"
+#include "external/simde/simde/x86/avx.h"
+#include "external/simde/simde/x86/avx2.h"
+#include "external/simde/simde/x86/fma.h"
+
+#endif
 
 namespace cpl
 {
@@ -77,7 +90,7 @@ namespace cpl
 		typedef __m256i v256si;
 
 		#ifdef CPL_WINDOWS
-		typedef DWORD OSError;
+		typedef std::uint32_t OSError; // DWORD
 		#else
 		typedef int OSError;
 		#endif

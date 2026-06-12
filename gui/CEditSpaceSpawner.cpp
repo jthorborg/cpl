@@ -38,9 +38,9 @@ namespace cpl
 		parent.addMouseListener(this, true);
 		dialog.setName(programInfo.name + " edit space");
 		dialog.setOpaque(true);
-		dialog.addToDesktop(juce::ComponentPeer::StyleFlags::windowHasDropShadow);
+		// JUCE 8 rounds corners of dropshadow peers...
+		dialog.addToDesktop(/*juce::ComponentPeer::StyleFlags::windowHasDropShadow | */ juce::ComponentPeer::StyleFlags::windowIsTemporary);
 		dialog.setVisible(false);
-
 	}
 
 	CEditSpaceSpawner::~CEditSpaceSpawner()

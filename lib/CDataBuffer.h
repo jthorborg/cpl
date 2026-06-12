@@ -36,7 +36,9 @@
 
 #ifndef _CDATABUFFER_H
 #define _CDATABUFFER_H
+
 #include "../MacroConstants.h"
+#include "../Misc.h"
 #include <vector>
 #include <cstdlib>
 #include <type_traits>
@@ -98,8 +100,8 @@ namespace cpl
 		CDataBuffer(const CDataBuffer<T, requiredAlignment> & other)
 			: buffer(nullptr), bufSize(0)
 		{
-			resize(other.size);
-			std::memcpy(buffer, other.buffer, other.size * sizeof(T));
+			resize(other.size());
+			std::memcpy(buffer, other.buffer, other.size() * sizeof(T));
 		}
 
 		CDataBuffer(CDataBuffer<T> && other)
@@ -113,8 +115,8 @@ namespace cpl
 		CDataBuffer & operator = (const CDataBuffer<T, requiredAlignment> & other)
 		{
 			clear();
-			resize(other.size);
-			std::memcpy(buffer, other.buffer, other.size * sizeof(T));
+			resize(other.size());
+			std::memcpy(buffer, other.buffer, other.size() * sizeof(T));
 			return *this;
 		}
 

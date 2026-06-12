@@ -36,6 +36,7 @@
 #include "../controls/Controls.h"
 #include "WidgetBase.h"
 #include "../../state/Serialization.h"
+#include "../../CPresetManager.h"
 
 namespace cpl
 {
@@ -96,14 +97,11 @@ namespace cpl
 		void setEmulatedVersion(cpl::Version newVersion);
 
 	protected:
+
 		std::string presetWithoutExtension(juce::File preset);
 		std::string fullPathToPreset(const std::string_view);
 		void setDisplayedPreset(juce::File location);
-
-
 		void initControls();
-
-		// data
 
 		CButton kloadPreset, ksavePreset, kloadDefault, ksaveDefault;
 		CComboBox kpresetList;
@@ -113,6 +111,7 @@ namespace cpl
 		std::string ext;
 		Setup layoutSetup;
 		Version version;
+		CPresetManager::DialogState dialog;
 	};
 
 };

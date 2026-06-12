@@ -315,7 +315,7 @@ namespace cpl
 			d1 + xO + 0, d1 + yO + triangleSize * 0.5f
 		);
 
-		triangleVertices.applyTransform(AffineTransform::identity.rotated(float(isPopped * -M_PI * 0.5), d1 + xO + triangleSize * 0.5f, d1 + yO + triangleSize * 0.5f));
+		triangleVertices.applyTransform(AffineTransform().rotated(float(isPopped * -M_PI * 0.5), d1 + xO + triangleSize * 0.5f, d1 + yO + triangleSize * 0.5f));
 		g.setColour(cpl::GetColour(cpl::ColourEntry::Activated).brighter(
 			c.isMouseOverOrDragging() * 0.1f + 0.2f + 0.2f * isPopped)
 		);
@@ -343,23 +343,24 @@ namespace cpl
 	}
 	/*
 	virtual juce::LowLevelGraphicsContext * LookAndFeel::createGraphicsContextAdvanced(
-		const Image & buffer, const Point<int> origin, const RectangleList<int> clip, bool isScreenContext, const Point<int> componentPosition)
+		const Image & buffer, const juce::Point<int> origin, const RectangleList<int> clip, bool isScreenContext, const juce::Point<int> componentPosition)
 	{
 		// default implementation just forwards:
 		return createGraphicsContext(buffer, origin, clip);
 	}*/
 
-	juce::LowLevelGraphicsContext * CLookAndFeel_CPL::createGraphicsContext(
+	std::unique_ptr<juce::LowLevelGraphicsContext> CLookAndFeel_CPL::createGraphicsContext(
 		const Image &imageToRenderOn,
-		const Point< int > &origin,
+		juce::Point<int> origin,
 		const RectangleList< int > &initialClip)
 	{
+#ifdef CPL_ENABLE_CSUBPIXELGRAPHICS
 		if (tryToRenderSubpixel/* && imageToRenderOn.getFormat() == imageToRenderOn.RGB*/)
 		{
-			return new rendering::CSubpixelSoftwareGraphics(imageToRenderOn, origin, initialClip);
+			return std::make_unique<rendering::CSubpixelSoftwareGraphics>(imageToRenderOn, origin, initialClip);
 		}
-
-		return new juce::LowLevelGraphicsSoftwareRenderer(imageToRenderOn, origin, initialClip);
+#endif
+		return juce::LookAndFeel_V3::createGraphicsContext(imageToRenderOn, origin, initialClip);
 
 	}
 
@@ -405,7 +406,7 @@ namespace cpl
 		else
 			#endif
 		{
-			return LookAndFeel::getTypefaceForFont(font);
+			return juce::LookAndFeel_V3::getTypefaceForFont(font);
 		}
 
 	}

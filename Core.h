@@ -44,7 +44,7 @@ namespace cpl
 		string ret;
 		ret.resize(size);
 		snprintf(ret.data(), size, format.data(), std::forward<Args>(args)...);
-		return move(ret);
+		return ret;
 	}
 
 	template<std::size_t Size, typename... Args>

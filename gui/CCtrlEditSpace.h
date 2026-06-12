@@ -51,10 +51,9 @@ namespace cpl
 		public juce::Component,
 		public juce::Label::Listener,
 		public CBaseControl::Listener,
-		public juce::TextEditor::Listener,
 		public Utility::DestructionServer<CCtrlEditSpace>,
 		public juce::ChangeListener,
-		public juce::ButtonListener,
+		public juce::Button::Listener,
 		public CToolTipClient,
 		public DestructionNotifier
 	{
@@ -97,7 +96,6 @@ namespace cpl
 		virtual void labelTextChanged(juce::Label *labelThatHasChanged) override;
 		virtual void resized() override;
 		virtual void visibilityChanged() override;
-		virtual void textEditorReturnKeyPressed(TextEditor &) override;
 		virtual void changeListenerCallback(ChangeBroadcaster *source) override;
 		virtual void editorShown(Label *, TextEditor &) override;
 		virtual void valueChanged(const CBaseControl * ctrl) override;
@@ -136,7 +134,6 @@ namespace cpl
 		bool compactMode;
 		volatile bool inputValueWasValid;
 		volatile bool exitAfterAnimation;
-		bool hasBeenInitialized;
 		juce::Label fmtValueLabel;
 	};
 

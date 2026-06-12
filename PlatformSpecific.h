@@ -41,25 +41,45 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#ifdef CPL_JUCE
+
+#include "../JuceLibraryCode/JuceHeader.h"
+#include <juce_opengl/juce_opengl.h>
+
+namespace cpl
+{
+	using namespace juce::gl;
+}
+
+#else
+
+#include <gl/gl.h>
+#include <gl/glu.h>
+
+#endif
+
 #elif defined(CPL_UNIXC)
 
 #include <dlfcn.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sysctl.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <dirent.h>
 
 #ifdef CPL_MAC
+
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
 #include "MacSupport.h"
-#include <IOKit/graphics/IOGraphicsLib.h>
+#include <sys/sysctl.h>
+
+#ifndef CPL_JUCE
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#endif
 
 #endif
 
@@ -70,7 +90,12 @@
 #ifndef CPL_MSVC
 #include <cfenv>
 // find similar header (set fpoint mask) for non-mscv on windows
+#ifdef __x86_64__
 #include <xmmintrin.h>
+#elif defined(__aarch64__) || defined(__arm64__)
+#define SIMDE_ENABLE_NATIVE_ALIASES
+#include "external/simde/simde/x86/sse.h"
+#endif
 #endif
 
 #endif

@@ -54,7 +54,9 @@ namespace cpl
 		public juce::ColourSelector
 	{
 	public:
-		CustomColourSelector(int flags = (showSliders | showAlphaChannel | showColourAtTop | showColourspace),
+		static constexpr int TheNormalFlags = showSliders | showAlphaChannel | showColourAtTop | showColourspace | editableColour;
+
+		CustomColourSelector(int flags = TheNormalFlags,
 			int edgeGap = 4,
 			int gapAroundColourSpaceComponent = 7)
 			: juce::ColourSelector(flags, edgeGap, gapAroundColourSpaceComponent)
@@ -109,7 +111,7 @@ namespace cpl
 	public:
 
 		ColourEditor(CColourControl * parentControl)
-			: CKnobSliderEditor(parentControl), parent(parentControl), selector(15, 5, 5),
+			: CKnobSliderEditor(parentControl), parent(parentControl), selector(CustomColourSelector::TheNormalFlags, 5, 5),
 			recursionFlagWeChanged(false), recursionFlagTheyChanged(false)
 		{
 			oldHeight = fullHeight;

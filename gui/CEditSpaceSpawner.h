@@ -51,7 +51,6 @@ namespace cpl
 		public juce::ComponentListener
 	{
 	public:
-		// http://stackoverflow.com/questions/281818/unmangling-the-result-of-stdtype-infoname
 		CEditSpaceSpawner(juce::Component & parentToControl);
 		~CEditSpaceSpawner();
 
@@ -65,7 +64,6 @@ namespace cpl
 
 		virtual void mouseDown(const juce::MouseEvent & e) override;
 
-		bool isEditSpacesOn;
 		bool recursionEdit;
 		juce::Component & parent;
 		std::unique_ptr<cpl::CCtrlEditSpace> currentEditSpace;

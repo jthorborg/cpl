@@ -70,9 +70,10 @@ namespace cpl
 
 		CBoxFilter() : buf(), ptr(0) {};
 
-		void setNext(scalar input)
+		template<typename TInput>
+		void setNext(TInput input)
 		{
-			buf[ptr] = input;
+			buf[ptr] = static_cast<T>(input);
 			ptr++;
 			ptr %= size;
 		}
@@ -569,19 +570,19 @@ namespace cpl
 		}
 
 		// floors to next integer, down to zero infinity
-		template<typename T, typename T2 = T>
-		inline typename std::enable_if<std::is_floating_point<T2>::value, T2>::type
-			floorToNInf(T input)
+		template<typename TOut, typename TIn>
+		inline typename std::enable_if<std::is_floating_point<TOut>::value, TOut>::type
+			floorToNInf(TIn input)
 		{
-			return static_cast<T2>(std::floor(input));
+			return static_cast<TOut>(std::floor(input));
 		}
 
 		// this is a no-op for integers
-		template<typename T, typename T2 = T>
-		inline typename std::enable_if<!std::is_floating_point<T2>::value, T2>::type
-			floorToNInf(T input)
+		template<typename TOut, typename TIn>
+		inline typename std::enable_if<!std::is_floating_point<TOut>::value, TOut>::type
+			floorToNInf(TIn input)
 		{
-			return static_cast<T2>(input);
+			return static_cast<TOut>(input);
 		}
 
 

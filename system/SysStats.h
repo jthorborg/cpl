@@ -108,7 +108,7 @@ namespace cpl
 
 			static const std::string getName()
 			{
-				return msdn::InstructionSet::Vendor() + msdn::InstructionSet::Brand();
+				return std::string(msdn::InstructionSet::Vendor()) + "/" + std::string(msdn::InstructionSet::Brand());
 			}
 
 			static bool test(Archs arch)
