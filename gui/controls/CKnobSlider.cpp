@@ -109,8 +109,11 @@ namespace cpl
 		const float rw = radius * 2.0f;
 		const float rotaryStartAngle = 2 * simd::consts<float>::pi * -0.4f;
 		const float rotaryEndAngle = 2 * simd::consts<float>::pi * 0.4f;
+
+		auto normalizedValue = std::clamp(bGetValue(), 0.0, 1.0);
+
 		const float angle = static_cast<float>(
-			bGetValue() * (rotaryEndAngle - rotaryStartAngle) + rotaryStartAngle
+			normalizedValue * (rotaryEndAngle - rotaryStartAngle) + rotaryStartAngle
 			);
 		const float thickness = 0.7f;
 

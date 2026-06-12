@@ -31,3 +31,4 @@
 #include "CPowerSlopeWidget.cpp"
 #include "CPresetWidget.cpp"
 #include "CTransformWidget.cpp"
+#include "CSignalGeneratorWidget.cpp"

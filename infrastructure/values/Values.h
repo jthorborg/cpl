@@ -6,5 +6,6 @@
 #include "TransformValue.h"
 #include "PowerFunctionValue.h"
 #include "WindowDesignValue.h"
+#include "SignalGeneratorValue.h"
 
 #endif
