@@ -38,11 +38,11 @@ namespace cpl
 
 	class CButton
 		: public juce::Button
-		, public ValueControl<ValueEntityBase, CompleteValue<LinearRange<ValueT>, BasicFormatter<ValueT>>>
+		, public ValueControl<ValueEntityBase, CompleteValue<BooleanRange<ValueT>, BasicFormatter<ValueT>>>
 	{
 		juce::String texts[2];
 		bool toggle;
-		typedef ValueControl<ValueEntityBase, CompleteValue<LinearRange<ValueT>, BasicFormatter<ValueT>>> Base;
+		typedef ValueControl<ValueEntityBase, CompleteValue<BooleanRange<ValueT>, BasicFormatter<ValueT>>> Base;
 	public:
 
 		CButton(ValueEntityBase * valueToReferTo = nullptr, bool takeOwnership = false);

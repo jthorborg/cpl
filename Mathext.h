@@ -552,13 +552,13 @@ namespace cpl
 		}
 
 		template<typename Scalar>
-		inline Scalar fractionToDB(Scalar val)
+		inline constexpr Scalar fractionToDB(Scalar val)
 		{
 			return (Scalar(20.0) * log10(val));
 		}
 
 		template<typename Scalar>
-		inline Scalar dbToFraction(Scalar dBValue)
+		inline constexpr Scalar dbToFraction(Scalar dBValue)
 		{
 			return std::pow((Scalar)10, dBValue / Scalar(20.0));
 		}

@@ -21,19 +21,44 @@
 
 **************************************************************************************
 
-	file:Widgets.h
+	file:CSignalGeneratorWidget.h
 
-		Extended include for cpl widgets
+		A widget for controlling SignalGenerator parameters.
 
 *************************************************************************************/
 
-#ifndef CPL_WIDGETS_H
-#define CPL_WIDGETS_H
+#ifndef CPL_CSIGNALGENERATORWIDGET_H
+#define CPL_CSIGNALGENERATORWIDGET_H
 
-#include "CPresetWidget.h"
-#include "CDSPWindowWidget.h"
-#include "CPowerSlopeWidget.h"
-#include "CTransformWidget.h"
-#include "CSignalGeneratorWidget.h"
+#include "WidgetBase.h"
+#include "../../infrastructure/values/SignalGeneratorValue.h"
+
+namespace cpl
+{
+
+	class CSignalGeneratorWidget
+		: public juce::Component
+		, public ValueControl<SignalGeneratorValue, CompleteSignalGeneratorValue>
+	{
+
+	public:
+
+		CSignalGeneratorWidget(SignalGeneratorValue * value = nullptr, bool takeOwnership = false);
+
+	protected:
+
+		virtual void onControlSerialization(CSerializer::Archiver & ar, Version version) override;
+		virtual void onControlDeserialization(CSerializer::Builder & ar, Version version) override;
+
+		void initUI();
+
+		CValueComboBox ktype;
+		CValueKnobSlider kamplitude;
+		CValueKnobSlider kdcOffset;
+		CButton kperChannel;
+		MatrixSection layout;
+	};
+
+};
 
 #endif
