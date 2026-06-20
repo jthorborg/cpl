@@ -94,6 +94,70 @@ namespace cpl
 			return Region::Identifier::Overflow;
 		}
 
+		// ---- Layer 2: Open + per-thread nesting stack ------------------------------
+
+		// Transient bookkeeping for a scope that is entered-but-not-yet-exited.
+		// Mutable: children reach down and deposit into 'childTime' as they exit.
+		// Dies on exit (its slot is reused by the next sibling at this depth).
+		// 'depth' is NOT stored here - it is implied by the slot's position in the stack.
+		struct Open
+		{
+			Timestamp enterTs;
+			Elapsed childTime;          // running sum of children's *totals*
+			Region::Identifier region;
+		};
+
+		// Per-thread transient nesting state. Pure bookkeeping, never published.
+		// POD + constant-initialized (the {} below) => no dynamic-init guard on access:
+		// every touch is a direct TLS-relative load, no first-touch ctor on the RT thread.
+		struct ThreadState
+		{
+			Open stack[MaxDepth];
+			std::uint32_t depth;        // free-running open-count; array writes guarded by < MaxDepth
+			std::uint32_t droppedSpans; // bumped when depth overflowed MaxDepth (migrates to Lane in L3)
+			// TODO(Layer 3): Lane* boundLane;
+		};
+
+		inline thread_local ThreadState tls{};   // constant-initialized POD, one per thread
+
+		// enter: push an Open at the current depth (array write guarded), then advance depth.
+		inline void enter(Region::Identifier region) noexcept
+		{
+			auto idx = tls.depth;
+
+			if (idx < MaxDepth) 
+				tls.stack[idx] = Open { now(), Elapsed{0}, region };
+
+			// free-running: increment even when overflowing, to balance
+			tls.depth++;
+		}
+
+		// exit: pop, compute total/self, deposit total into the parent's childTime, build the Span.
+		// Returns the finished Span; Layer 3 will publish it to the bound lane instead.
+		inline Span exit(std::uint64_t work) noexcept
+		{
+			// free-running: decrement even when overflowing
+			tls.depth--;
+			auto idx = tls.depth;
+			
+			if (idx >= MaxDepth)
+			{
+				// we never opened a slot for this one, the region registers as Invalid
+				tls.droppedSpans++;
+				return {};
+			}
+
+			Open& o = tls.stack[idx];
+			auto total = now() - o.enterTs;
+			auto self  = total - o.childTime;
+
+			// if we are a child, deposit to parent
+			if (idx > 0)
+				tls.stack[idx - 1].childTime += total;
+
+			return Span { o.enterTs, total, self, work, o.region, static_cast<std::uint8_t>(idx) };
+		}
+
 	}
 }; // cpl
 
