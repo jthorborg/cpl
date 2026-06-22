@@ -41,6 +41,7 @@
 
 #include "../MacroConstants.h"
 #include "../Exceptions.h"
+#include "../lib/LockFreeDataQueue.h"
 
 // Compile-time master gate. OFF => every macro/type/instrumentation point below
 // expands to nothing (no string literals emitted); a new cpl-based plugin pays zero.
@@ -51,6 +52,8 @@
 
 #include "ProfilingClock.h"
 #include <atomic>
+#include <optional>
+#include <array>
 
 namespace cpl
 {
@@ -94,6 +97,52 @@ namespace cpl
 			return Region::Identifier::Overflow;
 		}
 
+		struct FrameSnapshot
+		{
+			std::array<Span, MaxSpans> spans;
+			std::uint32_t spanCount{};
+			std::uint32_t droppedSpans{};
+			Timestamp startTs, stopTs;
+
+			// mostly for redundancy: consumer can see if there's a discontinuity
+			std::uint32_t frameNumber;
+
+		};
+
+		// ---- Layer 3: Lane + Frames ------------------------------------------------
+		struct Lane
+		{
+			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
+
+			LockFreeDataQueue<FrameSnapshot> queue;
+			std::uint32_t frameCounter;
+			bool isRealTime;
+
+			Lane()
+				: queue(8)
+				, frameCounter(0)
+				, isRealTime(true /* TODO: later optimization */)
+			{
+
+			}
+
+			template<typename IntegratingFunctor>
+			void drain(IntegratingFunctor&& f)
+			{
+				queue.grow();
+
+				while (true)
+				{
+					Storage s;
+
+					if (!queue.popElement(s))
+						return;
+
+					f(*s.getData());
+				}
+			}
+		};
+
 		// ---- Layer 2: Open + per-thread nesting stack ------------------------------
 
 		// Transient bookkeeping for a scope that is entered-but-not-yet-exited.
@@ -113,16 +162,76 @@ namespace cpl
 		struct ThreadState
 		{
 			Open stack[MaxDepth];
-			std::uint32_t depth;        // free-running open-count; array writes guarded by < MaxDepth
-			std::uint32_t droppedSpans; // bumped when depth overflowed MaxDepth (migrates to Lane in L3)
-			// TODO(Layer 3): Lane* boundLane;
+			// free-running open-count; array writes guarded by < MaxDepth
+			std::uint32_t depth;    
+			// depth when the current frame started
+			std::uint32_t priorDepth;    
+
+			FrameSnapshot* frame;
 		};
 
 		inline thread_local ThreadState tls{};   // constant-initialized POD, one per thread
 
+		class ProfilerFrame
+		{
+		public:
+
+			ProfilerFrame(Lane& lane)
+			{
+				CPL_RUNTIME_ASSERTION((tls.frame || tls.depth == 0) && "Unbalanced profiling TLS state");
+
+				auto startT = now();
+				// save/restore these regardless.
+				priorFrame = tls.frame;
+				priorDepth = tls.priorDepth;
+				auto frameCount = lane.frameCounter++;
+
+				storage.emplace();
+
+				const bool acquired = lane.isRealTime
+					? lane.queue.acquireFreeElement<false, true>(*storage)
+					: lane.queue.acquireFreeElement<true, false>(*storage);
+
+				if (!acquired)
+				{
+					// important to disengage destructor
+					storage.reset();
+					// kill all subsequent profiling to not misattribute it to parent frame
+					tls.frame = nullptr;
+					return;
+				}
+
+				auto* snapshot = storage->getData();
+
+				snapshot->frameNumber = frameCount;
+				snapshot->startTs = startT;
+				snapshot->droppedSpans = snapshot->spanCount = 0;
+
+				tls.priorDepth = tls.depth;
+				tls.frame = snapshot;
+			}
+
+			~ProfilerFrame()
+			{
+				if (storage)
+					storage->getData()->stopTs = now();
+
+				tls.priorDepth = priorDepth;
+				tls.frame = priorFrame;
+			}
+
+		private:
+			FrameSnapshot* priorFrame;
+			std::optional<Lane::Storage> storage;
+			std::uint32_t priorDepth;
+		};
+
 		// enter: push an Open at the current depth (array write guarded), then advance depth.
 		inline void enter(Region::Identifier region) noexcept
 		{
+			if (!tls.frame)
+				return;
+
 			auto idx = tls.depth;
 
 			if (idx < MaxDepth) 
@@ -134,17 +243,21 @@ namespace cpl
 
 		// exit: pop, compute total/self, deposit total into the parent's childTime, build the Span.
 		// Returns the finished Span; Layer 3 will publish it to the bound lane instead.
-		inline Span exit(std::uint64_t work) noexcept
+		inline void exit(std::uint64_t work) noexcept
 		{
+			if (!tls.frame)
+				return;
+
 			// free-running: decrement even when overflowing
 			tls.depth--;
 			auto idx = tls.depth;
-			
+			auto& storage = *tls.frame;
+
 			if (idx >= MaxDepth)
 			{
 				// we never opened a slot for this one, the region registers as Invalid
-				tls.droppedSpans++;
-				return {};
+				storage.droppedSpans++;
+				return;
 			}
 
 			Open& o = tls.stack[idx];
@@ -152,10 +265,16 @@ namespace cpl
 			auto self  = total - o.childTime;
 
 			// if we are a child, deposit to parent
-			if (idx > 0)
+			if (idx > tls.priorDepth)
 				tls.stack[idx - 1].childTime += total;
 
-			return Span { o.enterTs, total, self, work, o.region, static_cast<std::uint8_t>(idx) };
+			if (storage.spanCount == storage.spans.size())
+			{
+				storage.droppedSpans++;
+				return;
+			}
+
+			storage.spans[storage.spanCount++] = Span { o.enterTs, total, self, work, o.region, static_cast<std::uint8_t>(idx - tls.priorDepth) };
 		}
 
 	}
