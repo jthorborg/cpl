@@ -35,6 +35,8 @@
 
 	#define CPL__xstring(x) #x
 	#define CPL__tostring(x) CPL__xstring(x)
+	#define CPL_XCONCAT(a, b) a ## b
+	#define CPL_CONCAT(a, b) CPL_XCONCAT(a, b)
 
 	#ifndef CPL_JUCE
 		// detect JUCE in direct compilation
@@ -93,11 +95,7 @@
 		#endif
 		#define CPL_UNIXC
 	#endif
-	#ifdef _MSC_VER
 
-		#else
-
-	#endif
 	// #define cwarn(text) message("[" __FILE__ "] (" CPL__tostring(__LINE__) ") -> " __FUNCTION__ ": " text)
 
 	// an 'operator' that retrieves the unqualified type of the expression x

@@ -47,25 +47,28 @@
 // expands to nothing (no string literals emitted); a new cpl-based plugin pays zero.
 // Signalizer's build defines this to 1 so collection is always-on for end users.
 #ifndef CPL_PROFILING
-	#define CPL_PROFILING 0
+	#define CPL_PROFILING 1
 #endif
 
 #include "ProfilingClock.h"
 #include <atomic>
 #include <optional>
 #include <array>
+#include <limits>
 
 namespace cpl
 {
 	namespace Profiling
 	{
-		constexpr static std::size_t MaxRegions = 256;
+		constexpr static std::size_t MaxRegions = 255;
 		constexpr static std::size_t MaxDepth = 8;
 		constexpr static std::size_t MaxSpans = 64;
 
 		struct Region
 		{
-			enum class Identifier : std::uint16_t { Invalid = 0, Overflow = 1, First = 2, };
+			static_assert(MaxRegions <= std::numeric_limits<std::uint8_t>::max());
+
+			enum class Identifier : std::uint8_t { Invalid = 0, Overflow = 1, First = 2, };
 			const char* name;
 			/* WorkUnit kind; */
 		};
@@ -76,7 +79,7 @@ namespace cpl
 			Elapsed total;
 			Elapsed self;
 			// How much of the 'kind' was done, eg. samples - someone later will normalize over a sampling rate.
-			std::uint64_t work;
+			std::uint32_t work;
 			
 			// ascending alignment requirements
 			Region::Identifier region;
@@ -97,16 +100,24 @@ namespace cpl
 			return Region::Identifier::Overflow;
 		}
 
+		inline const Region& resolveRegion(Region::Identifier identifier)
+		{
+			return regions[static_cast<std::size_t>(identifier)];
+		}
+
 		struct FrameSnapshot
 		{
+			static_assert(MaxSpans <= std::numeric_limits<std::uint16_t>::max());
+
 			std::array<Span, MaxSpans> spans;
-			std::uint32_t spanCount{};
-			std::uint32_t droppedSpans{};
-			Timestamp startTs, stopTs;
+			std::uint16_t spanCount{};
+			std::uint16_t droppedSpans{};
 
 			// mostly for redundancy: consumer can see if there's a discontinuity
 			std::uint32_t frameNumber;
+			std::uint32_t work;
 
+			Timestamp startTs, stopTs;
 		};
 
 		// ---- Layer 3: Lane + Frames ------------------------------------------------
@@ -161,11 +172,12 @@ namespace cpl
 		// every touch is a direct TLS-relative load, no first-touch ctor on the RT thread.
 		struct ThreadState
 		{
+			static_assert(MaxDepth <= std::numeric_limits<std::uint8_t>::max());
 			Open stack[MaxDepth];
 			// free-running open-count; array writes guarded by < MaxDepth
-			std::uint32_t depth;    
+			std::uint8_t depth;    
 			// depth when the current frame started
-			std::uint32_t priorDepth;    
+			std::uint8_t priorDepth;    
 
 			FrameSnapshot* frame;
 		};
@@ -176,7 +188,7 @@ namespace cpl
 		{
 		public:
 
-			ProfilerFrame(Lane& lane)
+			ProfilerFrame(Lane* lane, std::uint32_t work)
 			{
 				CPL_RUNTIME_ASSERTION((tls.frame || tls.depth == 0) && "Unbalanced profiling TLS state");
 
@@ -184,13 +196,14 @@ namespace cpl
 				// save/restore these regardless.
 				priorFrame = tls.frame;
 				priorDepth = tls.priorDepth;
-				auto frameCount = lane.frameCounter++;
+
+				auto frameCount = lane ? lane->frameCounter++ : 0;
 
 				storage.emplace();
 
-				const bool acquired = lane.isRealTime
-					? lane.queue.acquireFreeElement<false, true>(*storage)
-					: lane.queue.acquireFreeElement<true, false>(*storage);
+				const bool acquired = lane && (lane->isRealTime
+					? lane->queue.acquireFreeElement<false, true>(*storage)
+					: lane->queue.acquireFreeElement<true, false>(*storage));
 
 				if (!acquired)
 				{
@@ -206,6 +219,7 @@ namespace cpl
 				snapshot->frameNumber = frameCount;
 				snapshot->startTs = startT;
 				snapshot->droppedSpans = snapshot->spanCount = 0;
+				snapshot->work = work;
 
 				tls.priorDepth = tls.depth;
 				tls.frame = snapshot;
@@ -243,7 +257,7 @@ namespace cpl
 
 		// exit: pop, compute total/self, deposit total into the parent's childTime, build the Span.
 		// Returns the finished Span; Layer 3 will publish it to the bound lane instead.
-		inline void exit(std::uint64_t work) noexcept
+		inline void exit(std::uint32_t work) noexcept
 		{
 			if (!tls.frame)
 				return;
@@ -270,14 +284,67 @@ namespace cpl
 
 			if (storage.spanCount == storage.spans.size())
 			{
-				storage.droppedSpans++;
+				if (storage.droppedSpans < std::numeric_limits<decltype(storage.droppedSpans)>::max())
+					storage.droppedSpans++;
 				return;
 			}
 
 			storage.spans[storage.spanCount++] = Span { o.enterTs, total, self, work, o.region, static_cast<std::uint8_t>(idx - tls.priorDepth) };
 		}
 
+		class SpanScope
+		{
+		public:
+
+			SpanScope(Region::Identifier identifier, std::uint32_t work)
+				: work(work)
+			{
+				enter(identifier);
+			}
+
+			~SpanScope()
+			{
+				exit(work);
+			}
+
+		private:
+			std::uint32_t work;
+		};
+
+		inline Region::Identifier loadOrAssignRegion(const char* name, std::atomic<Region::Identifier>& cached)
+		{
+			auto tempRegion = cached.load(std::memory_order_relaxed);
+			
+			// assume loaded early return
+			if (tempRegion != cpl::Profiling::Region::Identifier::Invalid)
+				return tempRegion;
+
+			tempRegion = cpl::Profiling::registerRegion(name); 
+			auto expectedRegion = cpl::Profiling::Region::Identifier::Invalid; 
+
+			if (!cached.compare_exchange_strong(expectedRegion, tempRegion, std::memory_order_relaxed))
+				tempRegion = expectedRegion; // potentially relinquish the old (only potentially possible)
+
+			return tempRegion;
+		}
 	}
 }; // cpl
+
+#if CPL_PROFILING
+
+#define CPL_PROFILE_INTERNAL(name, cachedName, work) \
+	static std::atomic<cpl::Profiling::Region::Identifier> cachedName { cpl::Profiling::Region::Identifier::Invalid }; \
+	cpl::Profiling::SpanScope CPL_CONCAT(scope, __COUNTER__) (cpl::Profiling::loadOrAssignRegion(name, cachedName), work);
+
+#define CPL_PROFILE(name) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), 0)
+#define CPL_PROFILE_WORK(name, work) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), work)
+
+
+#else
+
+#define CPL_PROFILE(name)
+#define CPL_PROFILE_WORK(name, work)
+
+#endif
 
 #endif
