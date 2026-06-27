@@ -43,11 +43,10 @@
 #include "../Exceptions.h"
 #include "../lib/LockFreeDataQueue.h"
 
-// Compile-time master gate. OFF => every macro/type/instrumentation point below
-// expands to nothing (no string literals emitted); a new cpl-based plugin pays zero.
-// Signalizer's build defines this to 1 so collection is always-on for end users.
+// Compile-time master gate. OFF => every macro/instrumentation point below
+// expands to nothing (no string literals emitted); a new cpl-based plugin pays zero beyond empty support structures.
 #ifndef CPL_PROFILING
-	#define CPL_PROFILING 1
+	#define CPL_PROFILING 0
 #endif
 
 #include "ProfilingClock.h"
@@ -61,8 +60,8 @@ namespace cpl
 	namespace Profiling
 	{
 		constexpr static std::size_t MaxRegions = 255;
-		constexpr static std::size_t MaxDepth = 8;
-		constexpr static std::size_t MaxSpans = 64;
+		constexpr static std::size_t MaxDepth = 10; // sizeof ThreadState = 256
+		constexpr static std::size_t MaxSpans = 63; // sizeof FrameSnapshot = 2048
 
 		struct Region
 		{
@@ -129,10 +128,10 @@ namespace cpl
 			std::uint32_t frameCounter;
 			bool isRealTime;
 
-			Lane()
+			Lane(bool isRealtime)
 				: queue(8)
 				, frameCounter(0)
-				, isRealTime(true /* TODO: later optimization */)
+				, isRealTime(isRealtime)
 			{
 
 			}
@@ -188,7 +187,7 @@ namespace cpl
 		{
 		public:
 
-			ProfilerFrame(Lane* lane, std::uint32_t work)
+			ProfilerFrame(Lane* lane)
 			{
 				CPL_RUNTIME_ASSERTION((tls.frame || tls.depth == 0) && "Unbalanced profiling TLS state");
 
@@ -201,9 +200,9 @@ namespace cpl
 
 				storage.emplace();
 
-				const bool acquired = lane && (lane->isRealTime
-					? lane->queue.acquireFreeElement<false, true>(*storage)
-					: lane->queue.acquireFreeElement<true, false>(*storage));
+				// Use the non-allocating path to avoid infinite growth if noone ever drains the profiler lanes.
+				// Could even be argued we shouldn't grow either.
+				const bool acquired = lane && lane->queue.acquireFreeElement<false, true>(*storage);
 
 				if (!acquired)
 				{
@@ -219,10 +218,16 @@ namespace cpl
 				snapshot->frameNumber = frameCount;
 				snapshot->startTs = startT;
 				snapshot->droppedSpans = snapshot->spanCount = 0;
-				snapshot->work = work;
+				snapshot->work = 0;
 
 				tls.priorDepth = tls.depth;
 				tls.frame = snapshot;
+			}
+
+			void setWork(std::uint32_t work)
+			{
+				if (storage)
+					storage->getData()->work = work;
 			}
 
 			~ProfilerFrame()

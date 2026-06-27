@@ -50,6 +50,9 @@ namespace cpl
 	template<typename T, std::size_t PacketSize>
 	inline void AudioStream<T, PacketSize>::Output::beginFrameProcessing()
 	{
+		if (auto lane = profilerLane.get())
+			profilerFrame.emplace(lane);
+
 		overhead.start(); all.start();
 		audioInput.resetOffsets();
 		oldInfo = info;
@@ -146,6 +149,8 @@ namespace cpl
 		}
 		else
 		{
+			CPL_PROFILE("AudioStream::Output::streamPropertiesChanged");
+
 			std::lock_guard<std::mutex> lock(inputCommandMutex);
 
 			if (consumerInfoChange)
@@ -202,24 +207,32 @@ namespace cpl
 				);
 			}
 
+			if (profilerFrame)
+				profilerFrame->setWork(audioInput.containedSamples);
+
 			overhead.pause();
 
-			for (auto& listener : listeners)
 			{
-				if (signalChange)
-					listener->onStreamPropertiesChanged(ctx, oldInfo);
+				CPL_PROFILE("AudioStream::Output::listenerOnStreamAudio");
 
-				if (audioInput.containedSamples > 0)
+				for (auto& listener : listeners)
 				{
-					listener->onStreamAudio
-					(
-						ctx,
-						audioInput.pointer.data(),
-						channels,
-						audioInput.containedSamples
-					);
+					if (signalChange)
+						listener->onStreamPropertiesChanged(ctx, oldInfo);
+
+					if (audioInput.containedSamples > 0)
+					{
+						listener->onStreamAudio
+						(
+							ctx,
+							audioInput.pointer.data(),
+							channels,
+							audioInput.containedSamples
+						);
+					}
 				}
 			}
+
 
 			playhead.advance(audioInput.containedSamples);
 			overhead.resume();
@@ -228,6 +241,8 @@ namespace cpl
 		// Publish into circular buffer here.
 		if (info.storeAudioHistory && info.audioHistorySize && channels)
 		{
+			CPL_PROFILE("AudioStream::Output::storeAudioHistory");
+
 			std::unique_lock<std::mutex> bufferLock(aBufferMutex, std::try_to_lock);
 			// decide whether to wait on the buffers
 			if (!bufferLock.owns_lock() && info.blockOnHistoryBuffer)
@@ -259,6 +274,8 @@ namespace cpl
 		}
 
 		// post measurements.
+		profilerFrame.reset();
+
 		double timeFraction = (double)audioInput.containedSamples;
 		if (std::isnormal(timeFraction))
 		{

@@ -41,7 +41,7 @@
 #include "../Protected.h"
 #include "Tools.h"
 #include "../state/Serialization.h"
-
+#include "../profiling/Profiling.h"
 
 namespace cpl
 {
@@ -178,8 +178,9 @@ namespace cpl
 			virtual ~OpenGLEventListener() {}
 		};
 
-		COpenGLView(std::string name)
+		COpenGLView(std::string name, std::shared_ptr<Profiling::Lane> profilerLane = nullptr)
 			: CSubView(std::move(name))
+			, profilerLane(profilerLane)
 		{
 			graphicsStamp = juce::Time::getHighResolutionTicks();
 			openGLStamp = juce::Time::getHighResolutionTicks();
@@ -296,11 +297,18 @@ namespace cpl
 			#ifdef CPL_TRACEGUARD_ENTRYPOINTS
 			CPL_TRACEGUARD_START
 			#endif
+
+			Profiling::ProfilerFrame frame(profilerLane.get());
+			frame.setWork(1); // one frame.
+
 			{
+				CPL_PROFILE("OpenGLView::renderingHook");
+
 				std::lock_guard<std::mutex> lock(hookMutex);
 				for (auto && l : oglEventListeners)
 					l->onOGLRendering(this);
 			}
+
 			juce::OpenGLHelpers::resetErrorState();			
 			auto start = juce::Time::getHighResolutionTicks();
 			/// <summary>
@@ -315,6 +323,7 @@ namespace cpl
 
 			CPL_DEBUGCHECKGL();
 
+			CPL_PROFILE("OpenGLView::renderOpenGL");
 			onOpenGLRendering();
 
 			CPL_DEBUGCHECKGL();
@@ -330,6 +339,7 @@ namespace cpl
 
 		void paint(juce::Graphics & g) override final
 		{
+			// TODO: Probably remove this function.
 			auto start = juce::Time::getHighResolutionTicks();
 			graphicsDelta = juce::Time::highResolutionTicksToSeconds(start - graphicsStamp);
 			onGraphicsRendering(g);
@@ -355,13 +365,17 @@ namespace cpl
 
 			// TODO: consider if the graphics context can be created/acquired somehow else, so we don't have to consider screen size.. etc.
 			auto scale = oglc->getRenderingScale();
-			std::unique_ptr<juce::LowLevelGraphicsContext> context(
-				juce::createOpenGLGraphicsContext(
-					*oglc,
-					static_cast<int>(scale * getWidth()),
-					static_cast<int>(scale * getHeight())
-				)
-			);
+			std::unique_ptr<juce::LowLevelGraphicsContext> context;
+			
+			{
+				CPL_PROFILE("OpenGLView::create2DGraphics");
+				context = juce::createOpenGLGraphicsContext(
+						*oglc,
+						static_cast<int>(scale * getWidth()),
+						static_cast<int>(scale * getHeight())
+				);
+			}
+
 
 			juce::Graphics g(*context);
 			if (scale != 1.0)
@@ -370,6 +384,7 @@ namespace cpl
 
 			CPL_DEBUGCHECKGL();
 
+			CPL_PROFILE("OpenGLView::paint2DGraphics");
 			func(g);
 
 			CPL_DEBUGCHECKGL();
@@ -408,6 +423,7 @@ namespace cpl
 	private:
 		std::mutex hookMutex;
 		std::set<OpenGLEventListener *> oglEventListeners;
+		std::shared_ptr<Profiling::Lane> profilerLane;
 	};
 
 	/*

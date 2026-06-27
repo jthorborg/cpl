@@ -40,6 +40,7 @@
 #include "ConcurrentServices.h"
 #include "lib/BlockingLockFreeQueue.h"
 #include "lib/CLIFOStream.h"
+#include "profiling/Profiling.h"
 #include "CProcessorTimer.h"
 #include <deque>
 #include <algorithm>
@@ -47,6 +48,7 @@
 #include "Protected.h"
 #include <variant>
 #include <functional>
+#include <optional>
 
 namespace cpl
 {
@@ -636,11 +638,15 @@ namespace cpl
 
 		private:
 
-			Output() = default;
-
-			static std::shared_ptr<Output> makeOutput()
+			Output(std::shared_ptr<Profiling::Lane>&& lane)
+				: profilerLane(std::move(lane))
 			{
-				return std::shared_ptr<Output>(new Output());
+
+			}
+
+			static std::shared_ptr<Output> makeOutput(std::shared_ptr<Profiling::Lane> lane)
+			{
+				return std::shared_ptr<Output>(new Output(std::move(lane)));
 			}
 
 			void beginFrameProcessing();
@@ -674,6 +680,8 @@ namespace cpl
 			weak_atomic<std::size_t> numDeferredAsyncSamples;
 			std::vector<std::string> channelNames;
 			std::mutex aBufferMutex;
+			std::shared_ptr<Profiling::Lane> profilerLane;
+			std::optional<Profiling::ProfilerFrame> profilerFrame;
 		};
 
 		struct FrameBatch
@@ -948,19 +956,42 @@ namespace cpl
 		/// however it should run almost as fast and synced as the audio thread, with a minimal overhead.
 		/// The subsystem also continuously updates a circular buffer which you can lock.
 		///
-		/// Fifo sizes refer to the buffer size of the lock free fifo. The fifo stores AudioFrames.
+		/// Fifo sizes refer to the buffer size of the lock free fifo. The fifo stores <see cref="AudioFrames"/>.
 		/// </summary>
-		/// <param name="enableAsyncSubsystem"></param>
-		static IO create(bool async = false, size_t initialFifoSize = 20, std::size_t maxFifoSize = 1000)
+		/// <param name="async">
+		/// Defaults to false. Prefer true if you have any sort of blocking operations as a listener
+		/// on the output, if you want to lock the fifo buffer or if you want to offload the audio processing to a background thread.
+		/// </param>
+		/// <param name="initialFifoSize">
+		/// How many frames fit in the fifo. The size of the frame is large given by the template PacketSize.
+		/// </param>
+		/// <param name="maxFifoSize">
+		/// How large the queue can grow before it should just overflow. Units are the same as <paramref name="initialFifoSize"/>.
+		/// </param>
+		/// <param name="profilerLanes">
+		/// Optional <see cref="Profiling::Lane"/>s to be used to make profiler frames on the output.
+		/// Note that frames are only constructed if the lane exists, so profiled work on non-existing lanes combined with <paramref name="async"/> = false
+		/// will attribute towards any existing <see cref="Profiling::ProfilerFrame"/> further up the stack.
+		/// </param>
+		static IO create(
+			std::optional<bool> async = std::nullopt,
+			std::optional<size_t> initialFifoSize = std::nullopt,
+			std::optional<std::size_t> maxFifoSize = std::nullopt,
+			std::shared_ptr<Profiling::Lane> outputProfilerLane = nullptr
+		)
 		{
-			auto output = Output::makeOutput();
+			async = async.value_or(false);
+			initialFifoSize = initialFifoSize.value_or(20);
+			maxFifoSize = maxFifoSize.value_or(1000);
+
+			auto output = Output::makeOutput(outputProfilerLane);
 			std::weak_ptr<Output> weakOutput = output;
 			
 			std::shared_ptr<AudioStream> stream;
 
-			if (async)
+			if (*async)
 			{
-				stream = std::shared_ptr<AudioStream>(new AudioStream(initialFifoSize, maxFifoSize));
+				stream = std::shared_ptr<AudioStream>(new AudioStream(initialFifoSize.value(), maxFifoSize.value()));
 				detail::launchThread([stream, weakOutput]() { asyncAudioSystem(stream, weakOutput); });
 			}
 			else
