@@ -125,13 +125,18 @@ namespace cpl
 			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
 
 			LockFreeDataQueue<FrameSnapshot> queue;
+			const std::string name;
 			std::uint32_t frameCounter;
+			// 48'000 samples / sec, 115.5 fps etc.
+			std::atomic<float> workUnitsPerSecond;
 			bool isRealTime;
 
-			Lane(bool isRealtime)
+			Lane(std::string_view name, bool isRealtime)
 				: queue(8)
+				, name(name)
 				, frameCounter(0)
 				, isRealTime(isRealtime)
+				, workUnitsPerSecond(0)
 			{
 
 			}

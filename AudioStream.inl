@@ -273,9 +273,9 @@ namespace cpl
 			}
 		}
 
-		// post measurements.
 		profilerFrame.reset();
 
+		// TODO: Remove all of this. post measurements.
 		double timeFraction = (double)audioInput.containedSamples;
 		if (std::isnormal(timeFraction))
 		{
