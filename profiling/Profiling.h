@@ -26,14 +26,6 @@
 		Umbrella header + compile-time configuration for the cpl runtime profiler.
 		Always-on, nested-scope, lock-free (single-writer-per-lane) instrumentation.
 
-		Map of the system (filled in layer by layer):
-			ProfilingClock.h  - Layer 0: timebase (Timestamp + now())          <-- start here
-			(Region/Span/Aggregate records)                                    - Layer 1
-			(Open + TLS nesting stack)                                         - Layer 2
-			(Lane + triple-buffered FrameSnapshot)                            - Layer 3
-			(ProfilerSink)                                                    - Layer 4
-			(ProfileFrame RAII binder + scope macros)                        - Layer 5
-
 *************************************************************************************/
 
 #ifndef CPL_PROFILING_H
@@ -119,7 +111,6 @@ namespace cpl
 			Timestamp startTs, stopTs;
 		};
 
-		// ---- Layer 3: Lane + Frames ------------------------------------------------
 		struct Lane
 		{
 			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
@@ -157,8 +148,6 @@ namespace cpl
 				}
 			}
 		};
-
-		// ---- Layer 2: Open + per-thread nesting stack ------------------------------
 
 		// Transient bookkeeping for a scope that is entered-but-not-yet-exited.
 		// Mutable: children reach down and deposit into 'childTime' as they exit.

@@ -23,51 +23,7 @@
 
 	file:ProfilingModel.h
 
-		Consumer-side (off-RT) aggregation of profiling Lanes into a persistent, smoothed
-		call-tree. Pure consumer utility - never touched by a producer, never on an RT
-		thread; depends on the always-on core in Profiling.h but is kept separate so the
-		"producers pay zero" boundary stays crisp.
-
-		Settled design contract (student/teacher session 2026-06-28):
-
-		 - Drain a Lane's FrameSnapshots and integrate each. Spans inside a snapshot are
-		   POST-ORDER (appended on exit, LIFO): children precede parents, the root exits
-		   last. Reconstruct via a stack: front->back, pop everything deeper than the
-		   current span (= its children, in reversed/LIFO order), then push the current.
-		   Tolerate orphans: on MaxSpans overflow the OUTERMOST spans are dropped, so a
-		   snapshot may be a forest, not a single-rooted tree.
-
-		 - Persistent model is a FOREST: one root per lane. A node is keyed by PATH of
-		   (region, ordinal) pairs, where 'ordinal' is the occurrence index of that region
-		   among its siblings in execution order (recovered consumer-side from array order;
-		   the recorder does NOT count collisions). Same region under different parents, or
-		   repeated as a sibling, stays a distinct node. Positional identity is inherent and
-		   imperfect (kill the 1st of N same-region siblings and the survivors shift up, the
-		   last fades) - accepted limitation.
-
-		 - Model holds SMOOTHED SCALARS ONLY (self/total/work + structure). NO stored
-		   positions. Layout is a render-time top-down pass that distributes each parent's
-		   width across children proportional to total and normalizes any overshoot into the
-		   parent's width, so geometry closes by construction and the EWMA lag never overflows.
-
-		 - Smoothing: asymmetric EWMA, alpha = exp(-dt/tau), dt from consecutive frame
-		   startTs (WALL-TIME weighted, never per-frame). Present node -> fast attack / slow
-		   release. Absent node -> release-only toward zero (sample = 0): the bar shrinks and
-		   GCs below an epsilon. Decay-to-zero is for truthfulness + fade-out feel; geometry
-		   is already handled at render.
-
-		 - META-FRAME FOLDING: a snapshot with frame.work == 0 is meta work (e.g. a
-		   MixGraphListener cycle where the sidechain hasn't filled yet). It has no load
-		   denominator and a different tree shape, so integrating it as its own EWMA sample
-		   would spuriously fade the real nodes. So integrate is TWO stages:
-		     1. reconstruct + ACCUMULATE every snapshot (meta or real) into a persistent
-		        path-keyed scratch tally (sum self/total/work).
-		     2. COMMIT only when frame.work > 0: blend scratch into EWMA, decay untouched
-		        nodes, GC, reset scratch. dt spans the whole folded window (last commit->now).
-		   Ordinal stays per-snapshot, so the same call across folded cycles sums by path
-		   (not split into siblings). Shared-prefix inflation (prefix ran N times, leaf once)
-		   is truthful = per-real-output load. Watch: if work never arrives the scratch
-		   magnitude grows unbounded -> commit spike; cap with a max-fold-time later if needed.
+		Various models for aggregating or smoothing profiled data for display or analysis.
 
 *************************************************************************************/
 
@@ -78,14 +34,26 @@
 #include <unordered_map>
 #include <vector>
 #include <stack>
+#include <map>
 
 namespace cpl
 {
 	namespace Profiling
 	{
+		/// <summary>
+		/// An exponentially smoothed model tracking profiling spans and hieararchies over time and smoothing their durations / relative positions.
+		/// </summary>
 		class EWMAModel
 		{
+			using Scalar = float;
+
+		public:
+			using Seconds = Seconds<Scalar>;
+
+		private:
+
 			static constexpr int touchedSentinel = -1;
+			static constexpr int untouchedSentinel = -2;
 
 			using Key = std::pair<Region::Identifier, std::uint16_t /* ordinal*/>;
 
@@ -102,24 +70,12 @@ namespace cpl
 
 			struct ModelNode
 			{
-				Elapsed stagingSelf{}, stagingTotal{};
-				std::uint32_t stagingWork{};
+				Seconds self{}, total{}, parentOffset{};
+				Seconds absentSeconds = (Seconds)touchedSentinel;
 
-				float self{}, total{}, work{};
-
-				float absentSeconds = touchedSentinel;
+				// TODO: No longer tracking 'work'
 
 				ChildNodeContainer<ModelNode> children;
-			};
-
-			struct Root : public ModelNode
-			{
-				// Identify lanes by name. The model doesn't have to link back to the lanes then.
-				std::string displayName;
-				double budget{};
-
-				std::optional<Timestamp> frameStart, lastCommitTs;
-				std::optional<Elapsed> deltaT;
 			};
 
 			using OrdinalLookup = std::pair<ModelNode*, Region::Identifier>;
@@ -132,17 +88,37 @@ namespace cpl
 				}
 			};
 
+			using OrdinalTracker = std::unordered_map<std::pair<ModelNode*, Region::Identifier>, std::uint32_t, OrdinalLookupHash>;
+
+			struct Root : public ModelNode
+			{
+				double budget{};
+
+				std::optional<Timestamp> frameStart, lastCommitTs;
+				std::optional<Seconds> deltaT;
+				OrdinalTracker ordinalTracker;
+			};
+
 		public:
+
+			/// <summary>
+			/// Drain all <see cref="FrameSnapshot"/> enqueued in the <paramref name="lane"/> somewhere else, and process them, updating the model.
+			/// </summary>
 			void consume(Lane& lane)
 			{
-				auto& root = getRoot(lane);
+				auto& root = lanes[lane.name];
 
 				lane.drain(
 					[&, this](const FrameSnapshot& snapshot)
 					{
 						// only record the start of the first (in a possible string of meta) frame(s).
 						if (!root.frameStart)
+						{
 							root.frameStart = snapshot.startTs;
+
+							if (root.lastCommitTs)
+								root.deltaT = *root.frameStart - *root.lastCommitTs;
+						}
 
 						// Handle broken snapshots later.
 						if (snapshot.droppedSpans > 0)
@@ -161,16 +137,38 @@ namespace cpl
 					}
 				);
 			}
+			
+			/// <summary>
+			/// Sets how fast the model should update, where 1 ~= 63% progression towards the new state over 1 second.
+			/// 0 yields an instant response (no smoothing).
+			/// </summary>
+			void setTimeConstant(Seconds seconds)
+			{
+				ewmaConstant = seconds;
+			}
 
 		private:
 
+			void EWMA(Seconds& state, Seconds input, std::optional<Scalar> coeff)
+			{
+				if (coeff.has_value())
+				{				
+					state += (input - state) * *coeff;
+				}
+				else
+				{
+					state = input;
+				}
+			}
+
 			void accumulate(Root& root, const FrameSnapshot& snapshot)
 			{
-				std::stack<ModelNode*> tree;
-				tree.push(&root);
+				std::stack<std::pair<ModelNode*, Timestamp>> tree;
+				// Everything is measured against the first frame, meta or not, for now.
+				tree.push({ &root, *root.frameStart });
 
-				// this isn't tracked state to cause snapshots to fold correctly.
-				std::unordered_map<std::pair<ModelNode*, Region::Identifier>, std::uint32_t, OrdinalLookupHash> ordinalTracker;
+				// complement of retained fraction
+				const auto coeff = root.deltaT ? 1 - std::exp(-*root.deltaT / ewmaConstant) : std::optional<Scalar>();
 
 				// iterate in reverse order to start from roots and reconstruct backwards.
 				// the recording format is in postfix "notation", so we can evaluate in one pass
@@ -183,60 +181,61 @@ namespace cpl
 						tree.pop();
 
 					// re-enter tree
-					auto& children = tree.top()->children;
+					auto& treetop = tree.top().first;
+					const auto parentStart = tree.top().second;
+
+					auto& children = treetop->children;
 
 					// find first fitting ordinal... does not seem especially smart..
-					auto ordinal = ordinalTracker[{tree.top(), span.region}]++;
+					auto ordinal = root.ordinalTracker[{treetop, span.region}]++;
 
 					// get or spawn nth child tree with this region on this path
 					auto& keyedChild = children[{ span.region, ordinal}];
 
 					// finally, add data to staging / scratch
-					keyedChild.absentSeconds = touchedSentinel;
-					keyedChild.stagingSelf += span.self;
-					keyedChild.stagingTotal += span.total;
-					keyedChild.stagingWork += span.work;
+					keyedChild.absentSeconds = (Seconds)touchedSentinel;
+
+					EWMA(keyedChild.self, span.self, coeff);
+					EWMA(keyedChild.total, span.total, coeff);
+					EWMA(keyedChild.parentOffset, span.start - parentStart, coeff);
 
 					// push so if next is deeper it builds upon the current ordinal child
-					tree.push(&keyedChild);
+					tree.push({ &keyedChild, span.start });
+				}
+			}
+
+			void prune(ChildNodeContainer<ModelNode>& nodes, Seconds deltaT /* kept for ghosts in the future */)
+			{
+				for (auto it = nodes.begin(); it != nodes.end();)
+				{
+					if (it->second.absentSeconds == (Seconds)untouchedSentinel)
+					{
+						// Could assert all children weren't touched..
+						it = nodes.erase(it);
+					}
+					else
+					{
+						it->second.absentSeconds = (Seconds)untouchedSentinel;
+						prune(it->second.children, deltaT);
+						++it;
+					}
 				}
 			}
 
 			void commit(Root& root, double budget)
 			{
-				if (root.lastCommitTs)
-					root.deltaT = *root.frameStart - *root.lastCommitTs;
+				if (root.deltaT)
+					prune(root.children, *root.deltaT);
 
-				// BODY TODO
-
+				root.ordinalTracker.clear();
 				root.budget = budget;
 				root.lastCommitTs = root.frameStart;
 				root.frameStart = std::nullopt;
 			}
 
-			Root& getRoot(Lane& lane)
-			{
-				Root* root = nullptr;
-
-				for (auto& candidate : lanes)
-				{
-					if (candidate.displayName == lane.name)
-					{
-						root = &candidate;
-						break;
-					}
-				}
-
-				if (root == nullptr)
-				{
-					root = &lanes.emplace_back();
-					root->displayName = lane.name;
-				}
-				
-				return *root;
-			}
-
-			std::vector<Root> lanes;
+			// Identify lanes by name. The model doesn't have to link back to the lanes then.
+			std::map<std::string, Root> lanes;
+			Seconds ewmaConstant = (Seconds)1;
 		};
 	}
 } // cpl

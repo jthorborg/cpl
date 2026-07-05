@@ -25,14 +25,6 @@
 
 		Layer 0 of the profiler: the timebase.
 
-		Contract we agreed on (derive the code from this):
-		  - now() is a GLOBAL, dumb free function returning raw absolute steady_clock
-		    ticks. No epoch lookup, no context, no lock, no syscall => RT-safe.
-		  - The stored type is the native integer rep of steady_clock (the numerator).
-		    The period (denominator) is a compile-time std::ratio, stored nowhere.
-		  - No float / no division on the hot path. Convert to seconds, and subtract
-		    the per-run epoch, ONLY at display/export (epoch lives later, in the sink).
-
 *************************************************************************************/
 
 #ifndef CPL_PROFILINGCLOCK_H
@@ -48,15 +40,14 @@ namespace cpl
 		using std_clock = std::chrono::steady_clock;
 		using Timestamp = std_clock::time_point;   // a point on the timeline (span start)
 		using Elapsed = std_clock::duration;     // a length (total / self)
+		
+		template<typename Float>
+		using Seconds = std::chrono::duration<Float>;
 
 		inline Timestamp now() noexcept
 		{
 			return std_clock::now();
 		}
-
-		// TODO(you, later/at-display): the conversion helpers
-		//   ticks -> seconds (using steady_clock::period), and span-start relative to
-		//   a captured epoch. These are NOT on the hot path.
 	}
 }; // cpl
 
