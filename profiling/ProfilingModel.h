@@ -92,11 +92,22 @@ namespace cpl
 
 			struct Root : public ModelNode
 			{
-				double budget{};
-
 				std::optional<Timestamp> frameStart, lastCommitTs;
 				std::optional<Seconds> deltaT;
+
+				Seconds duration {};
+				std::optional<Seconds> budget;
+				std::optional<Scalar> coeff;
+
 				OrdinalTracker ordinalTracker;
+
+				Scalar getBudgetUsage()
+				{
+					if (budget)
+						return duration / *budget;
+
+					return 0;
+				}
 			};
 
 		public:
@@ -117,7 +128,11 @@ namespace cpl
 							root.frameStart = snapshot.startTs;
 
 							if (root.lastCommitTs)
+							{
 								root.deltaT = *root.frameStart - *root.lastCommitTs;
+								// complement of retained fraction
+								root.coeff = 1 - std::exp(-*root.deltaT / ewmaConstant);
+							}
 						}
 
 						// Handle broken snapshots later.
@@ -126,14 +141,16 @@ namespace cpl
 
 						accumulate(root, snapshot);
 
-						if (snapshot.work == 0)
-							return;
+						auto duration = snapshot.stopTs - *root.frameStart;
 
-						auto denominator = lane.workUnitsPerSecond.load(std::memory_order_acquire);
-
-						CPL_RUNTIME_ASSERTION(denominator > 0);
-
-						commit(root, snapshot.work / denominator);
+						if (snapshot.isCadenceFrame())
+						{
+							commit(root, duration, root.deltaT);
+						}
+						else if (snapshot.work != 0)
+						{
+							commit(root, duration, Seconds(snapshot.work / snapshot.workDenominator));
+						}
 					}
 				);
 			}
@@ -167,9 +184,6 @@ namespace cpl
 				// Everything is measured against the first frame, meta or not, for now.
 				tree.push({ &root, *root.frameStart });
 
-				// complement of retained fraction
-				const auto coeff = root.deltaT ? 1 - std::exp(-*root.deltaT / ewmaConstant) : std::optional<Scalar>();
-
 				// iterate in reverse order to start from roots and reconstruct backwards.
 				// the recording format is in postfix "notation", so we can evaluate in one pass
 				// with the consequence being children are stored in reverse order. 
@@ -191,13 +205,12 @@ namespace cpl
 
 					// get or spawn nth child tree with this region on this path
 					auto& keyedChild = children[{ span.region, ordinal}];
-
-					// finally, add data to staging / scratch
 					keyedChild.absentSeconds = (Seconds)touchedSentinel;
 
-					EWMA(keyedChild.self, span.self, coeff);
-					EWMA(keyedChild.total, span.total, coeff);
-					EWMA(keyedChild.parentOffset, span.start - parentStart, coeff);
+					// finally, average data to model storage
+					EWMA(keyedChild.self, span.self, root.coeff);
+					EWMA(keyedChild.total, span.total, root.coeff);
+					EWMA(keyedChild.parentOffset, span.start - parentStart, root.coeff);
 
 					// push so if next is deeper it builds upon the current ordinal child
 					tree.push({ &keyedChild, span.start });
@@ -222,13 +235,23 @@ namespace cpl
 				}
 			}
 
-			void commit(Root& root, double budget)
+			void commit(Root& root, Seconds duration, std::optional<Seconds> budget)
 			{
 				if (root.deltaT)
 					prune(root.children, *root.deltaT);
 
 				root.ordinalTracker.clear();
-				root.budget = budget;
+				
+				EWMA(root.duration, duration, root.coeff);
+
+				if (budget)
+				{
+					if (!root.budget)
+						root.budget = budget;
+
+					EWMA(*root.budget, *budget, root.coeff);
+				}
+
 				root.lastCommitTs = root.frameStart;
 				root.frameStart = std::nullopt;
 			}

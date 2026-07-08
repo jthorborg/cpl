@@ -208,7 +208,7 @@ namespace cpl
 			}
 
 			if (profilerFrame)
-				profilerFrame->setWork(audioInput.containedSamples);
+				profilerFrame->setWork(static_cast<float>(audioInput.containedSamples), static_cast<float>(info.sampleRate));
 
 			overhead.pause();
 

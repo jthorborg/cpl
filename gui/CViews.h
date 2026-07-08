@@ -299,7 +299,6 @@ namespace cpl
 			#endif
 
 			Profiling::ProfilerFrame frame(profilerLane.get());
-			frame.setWork(1); // one frame.
 
 			{
 				CPL_PROFILE("OpenGLView::renderingHook");

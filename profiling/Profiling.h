@@ -106,9 +106,13 @@ namespace cpl
 
 			// mostly for redundancy: consumer can see if there's a discontinuity
 			std::uint32_t frameNumber;
-			std::uint32_t work;
+
+			float work;
+			float workDenominator;
 
 			Timestamp startTs, stopTs;
+
+			bool isCadenceFrame() const noexcept { return workDenominator == 0; }
 		};
 
 		struct Lane
@@ -118,8 +122,6 @@ namespace cpl
 			LockFreeDataQueue<FrameSnapshot> queue;
 			const std::string name;
 			std::uint32_t frameCounter;
-			// 48'000 samples / sec, 115.5 fps etc.
-			std::atomic<float> workUnitsPerSecond;
 			bool isRealTime;
 
 			Lane(std::string_view name, bool isRealtime)
@@ -127,7 +129,6 @@ namespace cpl
 				, name(name)
 				, frameCounter(0)
 				, isRealTime(isRealtime)
-				, workUnitsPerSecond(0)
 			{
 
 			}
@@ -212,16 +213,44 @@ namespace cpl
 				snapshot->frameNumber = frameCount;
 				snapshot->startTs = startT;
 				snapshot->droppedSpans = snapshot->spanCount = 0;
+				// by default, frames are interpreted as cadence
 				snapshot->work = 0;
+				snapshot->workDenominator = 0;
 
 				tls.priorDepth = tls.depth;
 				tls.frame = snapshot;
 			}
 
-			void setWork(std::uint32_t work)
+			/// <summary>
+			/// By default, frames are interpreted as "cadence-like" which means they don't have deadline semantics
+			/// and resulting budget computations are completely derived from their occurance and duration.
+			/// Use this to encode how much work this represents as a fraction of how much must be done in a second.
+			/// </summary>
+			/// <param name="work">
+			/// Some amount of work. It's possible to express zero work while having a denominator, in which case this frame
+			/// may be interpreted as stitching to the next workful frame.
+			/// </param>
+			/// <param name="denominator"/>
+			/// The amount of work per second, must always be specified but can change over time.
+			/// </param>
+			void setWork(float work, float denominator)
 			{
+				if (denominator <= 0)
+					CPL_RUNTIME_EXCEPTION("Work cannot be expressed over 0 or less time");
+
+				if (work < 0)
+					CPL_RUNTIME_EXCEPTION("Work cannot be negative");
+
 				if (storage)
-					storage->getData()->work = work;
+				{
+					auto& data = *storage->getData();
+
+					// Until having thought more about this, don't submit work twice
+					CPL_RUNTIME_ASSERTION(data.isCadenceFrame());
+
+					data.work = work;
+					data.workDenominator = denominator;
+				}
 			}
 
 			~ProfilerFrame()
