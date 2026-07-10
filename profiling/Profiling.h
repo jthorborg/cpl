@@ -246,7 +246,8 @@ namespace cpl
 					auto& data = *storage->getData();
 
 					// Until having thought more about this, don't submit work twice
-					CPL_RUNTIME_ASSERTION(data.isCadenceFrame());
+					if (!data.isCadenceFrame())
+						CPL_RUNTIME_EXCEPTION("Setting work twice");
 
 					data.work = work;
 					data.workDenominator = denominator;

@@ -45,9 +45,9 @@ namespace cpl
 		/// </summary>
 		class EWMAModel
 		{
-			using Scalar = float;
-
 		public:
+
+			using Scalar = float;
 			using Seconds = Seconds<Scalar>;
 
 		private:
@@ -100,17 +100,72 @@ namespace cpl
 				std::optional<Scalar> coeff;
 
 				OrdinalTracker ordinalTracker;
-
-				Scalar getBudgetUsage()
-				{
-					if (budget)
-						return duration / *budget;
-
-					return 0;
-				}
+				decltype(Span::depth) maxDepthSeen{};
+				std::optional<bool> isCadenceLike;
 			};
 
 		public:
+
+			struct LaneData
+			{
+				const std::string& getName() const noexcept { return name; }
+
+				Seconds deltaTime() const noexcept { return *root.deltaT; }
+				Scalar usage() const noexcept { return duration() / budget(); }
+
+				Seconds duration() const noexcept { return root.duration; }
+				Seconds budget() const noexcept { return *root.budget; }
+
+				int maxDepthSeen() const noexcept { return static_cast<int>(root.maxDepthSeen); }
+				bool isCadenceLike() const noexcept { return *root.isCadenceLike; }
+
+				// receives (int depth, Region::Identifier, Seconds start, Seconds self, Seconds total)
+				template<typename Functor>
+				void visit(Functor&& visitor) const 
+				{
+					visitImpl(root.children, visitor, Profiling::Seconds<double>(0), 0);
+				}
+
+				LaneData(const LaneData& other) = default;
+				LaneData& operator = (const LaneData& other) = default;
+
+			private:
+
+				friend class EWMAModel;
+				
+				LaneData(const std::string& name, const Root& root) : name(name), root(root) {}
+
+				template<typename Functor>
+				void visitImpl(const ChildNodeContainer<ModelNode>& nodes, Functor& visitor, Profiling::Seconds<double> runningPosition, int depth) const
+				{
+					for (auto it = nodes.begin(); it != nodes.end(); ++it)
+					{
+						auto& node = it->second;
+						auto position = runningPosition + node.parentOffset;
+
+						visitor(depth, it->first.first, Seconds(position), node.self, node.total);
+
+						visitImpl(node.children, visitor, position, depth + 1);
+					}
+				}
+
+				const std::string& name;
+				const Root& root;
+			};
+
+			std::optional<LaneData> getLaneData(const Lane& lane) const noexcept
+			{
+				auto it = lanes.find(lane.name);
+				if (it == lanes.end())
+					return std::nullopt;
+
+				const auto& root = it->second;
+
+				if (!root.budget || !root.deltaT || !root.isCadenceLike)
+					return std::nullopt;
+
+				return LaneData { it->first, it->second };
+			}
 
 			/// <summary>
 			/// Drain all <see cref="FrameSnapshot"/> enqueued in the <paramref name="lane"/> somewhere else, and process them, updating the model.
@@ -143,12 +198,21 @@ namespace cpl
 
 						auto duration = snapshot.stopTs - *root.frameStart;
 
+						if (!root.isCadenceLike)
+							root.isCadenceLike = snapshot.isCadenceFrame();
+
 						if (snapshot.isCadenceFrame())
 						{
+							if (!*root.isCadenceLike)
+								CPL_RUNTIME_EXCEPTION("Lane switched from deadline mode to cadence");
+
 							commit(root, duration, root.deltaT);
 						}
 						else if (snapshot.work != 0)
 						{
+							if (*root.isCadenceLike)
+								CPL_RUNTIME_EXCEPTION("Lane switched from cadence mode to deadline, did you forget to setWork(0, ...)?");
+
 							commit(root, duration, Seconds(snapshot.work / snapshot.workDenominator));
 						}
 					}
@@ -190,6 +254,7 @@ namespace cpl
 				for (auto i = snapshot.spanCount; i --> 0;)
 				{
 					auto span = snapshot.spans[i];
+					root.maxDepthSeen = std::max(root.maxDepthSeen, span.depth);
 					// trim the tree if we've exited out
 					while (tree.size() > span.depth + 1) // (tree always has +1 entry)
 						tree.pop();
