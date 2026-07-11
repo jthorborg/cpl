@@ -52,8 +52,8 @@ namespace cpl
 
 		private:
 
-			static constexpr int touchedSentinel = -1;
-			static constexpr int untouchedSentinel = -2;
+			static constexpr int touchedSentinel = 0;
+			static constexpr int ghostTimeout = 1;
 
 			using Key = std::pair<Region::Identifier, std::uint16_t /* ordinal*/>;
 
@@ -108,6 +108,7 @@ namespace cpl
 
 			struct LaneData
 			{
+
 				const std::string& getName() const noexcept { return name; }
 
 				Seconds deltaTime() const noexcept { return *root.deltaT; }
@@ -119,11 +120,95 @@ namespace cpl
 				int maxDepthSeen() const noexcept { return static_cast<int>(root.maxDepthSeen); }
 				bool isCadenceLike() const noexcept { return *root.isCadenceLike; }
 
+				struct Layout
+				{
+					friend struct LaneData;
+
+					const int maxDepthLevelsInLayout() const noexcept { return layoutDepth; }
+					const int maxDepthEver() const noexcept { return maxDepth; }
+
+					Layout(Layout&& other) = default;
+					Layout& operator=(Layout&& other) = default;
+
+				private:
+
+					struct Node
+					{
+						typedef ChildNodeContainer<ModelNode>::const_iterator NodeSlot;
+
+						NodeSlot node;
+						Profiling::Seconds<double> start;
+						int depth;
+					};
+
+					Layout(std::vector<Node>&& nodes, int layoutDepth, int maxDepth)
+						: nodes(std::move(nodes))
+						, layoutDepth(layoutDepth)
+						, maxDepth(maxDepth)
+					{
+
+					}
+
+					std::vector<Node> nodes;
+					int layoutDepth, maxDepth;
+				};
+
 				// receives (int depth, Region::Identifier, Seconds start, Seconds self, Seconds total)
 				template<typename Functor>
-				void visit(Functor&& visitor) const 
+				void visit(Functor&& visitor, const Layout& layout = buildLayout()) const
 				{
-					visitImpl(root.children, visitor, Profiling::Seconds<double>(0), 0);
+					for (const auto& visit : layout.nodes)
+					{
+						visitor(
+							visit.depth, 
+							visit.node->first.first, 
+							visit.start, 
+							visit.node->second.self, 
+							visit.node->second.total
+						);
+					}
+				}
+
+				Layout buildLayout(Scalar parentSelfPruningThreshold = -std::numeric_limits<Scalar>::infinity()) const
+				{
+					int maxDepthLayout = 0;
+
+					struct NodeVisit
+					{
+						const ChildNodeContainer<ModelNode>& nodes;
+						Profiling::Seconds<double> runningPosition;
+						int depth;
+					};
+
+					std::vector<NodeVisit> stack;
+					std::vector<Layout::Node> result;
+
+					stack.emplace_back(NodeVisit{ root.children, {}, 0 });
+
+					while (stack.size())
+					{
+						auto top = stack.back();
+						stack.pop_back();
+
+						for (auto it = top.nodes.begin(); it != top.nodes.end(); ++it)
+						{
+							auto& node = it->second;
+							auto position = top.runningPosition + node.parentOffset;
+							auto proportion = node.self / node.total;
+
+							auto isKept = node.children.empty() || proportion > parentSelfPruningThreshold;
+
+							if (isKept)
+							{
+								maxDepthLayout = std::max(maxDepthLayout, top.depth + 1);
+								result.emplace_back(Layout::Node { it, position, top.depth });
+							}
+
+							stack.emplace_back(NodeVisit { node.children, position, top.depth + (isKept ? 1 : 0) });
+						}
+					}
+
+					return Layout(std::move(result), maxDepthLayout, maxDepthSeen());
 				}
 
 				LaneData(const LaneData& other) = default;
@@ -134,20 +219,6 @@ namespace cpl
 				friend class EWMAModel;
 				
 				LaneData(const std::string& name, const Root& root) : name(name), root(root) {}
-
-				template<typename Functor>
-				void visitImpl(const ChildNodeContainer<ModelNode>& nodes, Functor& visitor, Profiling::Seconds<double> runningPosition, int depth) const
-				{
-					for (auto it = nodes.begin(); it != nodes.end(); ++it)
-					{
-						auto& node = it->second;
-						auto position = runningPosition + node.parentOffset;
-
-						visitor(depth, it->first.first, Seconds(position), node.self, node.total);
-
-						visitImpl(node.children, visitor, position, depth + 1);
-					}
-				}
 
 				const std::string& name;
 				const Root& root;
@@ -186,7 +257,7 @@ namespace cpl
 							{
 								root.deltaT = *root.frameStart - *root.lastCommitTs;
 								// complement of retained fraction
-								root.coeff = 1 - std::exp(-*root.deltaT / ewmaConstant);
+								root.coeff = 1 - std::exp(-*root.deltaT / ewmaConstant.load(std::memory_order_relaxed));
 							}
 						}
 
@@ -225,7 +296,7 @@ namespace cpl
 			/// </summary>
 			void setTimeConstant(Seconds seconds)
 			{
-				ewmaConstant = seconds;
+				ewmaConstant.store(seconds, std::memory_order_relaxed);
 			}
 
 		private:
@@ -282,18 +353,18 @@ namespace cpl
 				}
 			}
 
-			void prune(ChildNodeContainer<ModelNode>& nodes, Seconds deltaT /* kept for ghosts in the future */)
+			void prune(ChildNodeContainer<ModelNode>& nodes, Seconds deltaT)
 			{
 				for (auto it = nodes.begin(); it != nodes.end();)
 				{
-					if (it->second.absentSeconds == (Seconds)untouchedSentinel)
+					if (it->second.absentSeconds > Seconds(ghostTimeout))
 					{
 						// Could assert all children weren't touched..
 						it = nodes.erase(it);
 					}
 					else
 					{
-						it->second.absentSeconds = (Seconds)untouchedSentinel;
+						it->second.absentSeconds += deltaT;
 						prune(it->second.children, deltaT);
 						++it;
 					}
@@ -323,7 +394,9 @@ namespace cpl
 
 			// Identify lanes by name. The model doesn't have to link back to the lanes then.
 			std::map<std::string, Root> lanes;
-			Seconds ewmaConstant = (Seconds)1;
+			std::atomic<Seconds> ewmaConstant = (Seconds)1;
+
+			static_assert(std::atomic<Seconds>::is_always_lock_free, "Need a different pattern for updating time constants");
 		};
 	}
 } // cpl

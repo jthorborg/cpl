@@ -52,7 +52,7 @@ namespace cpl
 	namespace Profiling
 	{
 		constexpr static std::size_t MaxRegions = 255;
-		constexpr static std::size_t MaxDepth = 10; // sizeof ThreadState = 256
+		constexpr static std::size_t MaxDepth = 16; // sizeof ThreadState = 400
 		constexpr static std::size_t MaxSpans = 63; // sizeof FrameSnapshot = 2048
 
 		struct Region
@@ -86,7 +86,10 @@ namespace cpl
 			auto next = counter.fetch_add(1, std::memory_order_relaxed) + static_cast<std::uint32_t>(Region::Identifier::First);
 
 			if (next < MaxRegions)
+			{
+				regions[next].name = name;
 				return static_cast<Region::Identifier>(next);
+			}
 
 			return Region::Identifier::Overflow;
 		}
@@ -365,14 +368,24 @@ namespace cpl
 	static std::atomic<cpl::Profiling::Region::Identifier> cachedName { cpl::Profiling::Region::Identifier::Invalid }; \
 	cpl::Profiling::SpanScope CPL_CONCAT(scope, __COUNTER__) (cpl::Profiling::loadOrAssignRegion(name, cachedName), work);
 
-#define CPL_PROFILE(name) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), 0)
-#define CPL_PROFILE_WORK(name, work) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), work)
+// Not exception safe
+#define CPL_PROFILE_EXPRESSION_INTERNAL(expression, cachedName) \
+	static std::atomic<cpl::Profiling::Region::Identifier> cachedName { cpl::Profiling::Region::Identifier::Invalid }; \
+	cpl::Profiling::enter(cpl::Profiling::loadOrAssignRegion(#expression, cachedName)); \
+	expression; \
+	cpl::Profiling::exit(0);
 
+#define CPL_PROFILE(name) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), 0)
+#define CPL_PROFILE_BEGIN(name) { CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), 0)
+#define CPL_PROFILE_END }
+#define CPL_PROFILE_WORK(name, work) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), work)
+#define CPL_PROFILE_EXPRESSION(expr) CPL_PROFILE_EXPRESSION_INTERNAL(expr, cachedName)
 
 #else
 
 #define CPL_PROFILE(name)
 #define CPL_PROFILE_WORK(name, work)
+#define CPL_PROFILE_EXPRESSION(expr) expr
 
 #endif
 
