@@ -120,6 +120,8 @@ namespace cpl
 
 			void forward(uarray<const T> input, uarray<Complex> output, uarray<Complex> work) const
 			{
+				CPL_PROFILE("UniFFT::forward");
+
 				CPL_RUNTIME_ASSERTION(input.size() == output.size());
 				CPL_RUNTIME_ASSERTION(input.size() == size);
 				CPL_RUNTIME_ASSERTION(work.size() == size);
@@ -136,6 +138,8 @@ namespace cpl
 			template<bool Scale = true>
 			void inverse(uarray<const Complex> input, uarray<T> output, uarray<Complex> work) const
 			{
+				CPL_PROFILE("UniFFT::inverse");
+
 				CPL_RUNTIME_ASSERTION(input.size() == output.size());
 				CPL_RUNTIME_ASSERTION(input.size() == size);
 				CPL_RUNTIME_ASSERTION(work.size() == size);

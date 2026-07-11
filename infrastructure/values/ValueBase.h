@@ -178,7 +178,7 @@ namespace cpl
 		Formatter * formatter;
 	};
 
-	template<typename Transformer = VirtualTransformer<ValueT>, typename Formatter = VirtualFormatter<ValueT>>
+	template<typename Transformer = LinearRange<ValueT>, typename Formatter = BasicFormatter<ValueT>>
 	class CompleteValue : public SelfcontainedValue<Transformer, Formatter>
 	{
 	public:

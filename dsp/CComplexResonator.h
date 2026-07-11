@@ -37,6 +37,7 @@
 #include "DSPWindows.h"
 #include "../Utility.h"
 #include "../lib/AlignedAllocator.h"
+#include "../profiling/Profiling.h"
 
 namespace cpl
 {
@@ -477,6 +478,8 @@ namespace cpl
 			template<typename V, class MultiVector, std::size_t inputDataChannels, std::size_t staticVectors>
 			void internalWindowResonate(const Constant& constant, const MultiVector & data, std::size_t numSamples)
 			{
+				CPL_PROFILE("ComplexResonator::resonate-N");
+
 				match(constant);
 
 				using namespace cpl;
@@ -548,6 +551,8 @@ namespace cpl
 			template<typename V, class MultiVector, std::size_t inputDataChannels>
 			void internalWindowResonate1(const Constant& constant, const MultiVector& data, std::size_t numSamples)
 			{
+				CPL_PROFILE("ComplexResonator::resonate-1");
+
 				match(constant);
 
 				using namespace cpl;
@@ -611,6 +616,8 @@ namespace cpl
 			template<typename V, class MultiVector, std::size_t staticVectors>
 			void internalWindowComplexResonate(const Constant& constant, const MultiVector & data, std::size_t numSamples)
 			{
+				CPL_PROFILE("ComplexResonator::resonate-complex");
+
 				match(constant);
 
 				using namespace cpl;
@@ -674,6 +681,8 @@ namespace cpl
 			template<typename V, class MultiVector, std::size_t inputDataChannels>
 			void internalWindowResonate3(const Constant& constant, const MultiVector & data, std::size_t numSamples)
 			{
+				CPL_PROFILE("ComplexResonator::resonate-3");
+
 				match(constant);
 
 				using namespace cpl;
