@@ -154,14 +154,17 @@ namespace cpl
 					int layoutDepth, maxDepth;
 				};
 
+				template<typename Functor>
+				void visit(Functor&& visitor) const
+				{
+					visit(std::forward<Functor>(visitor), buildLayout());
+				}
+
 				// receives (int depth, Region::Identifier, Seconds start, Seconds self, Seconds total)
 				template<typename Functor>
-				void visit(Functor&& visitor, std::optional<Layout> layout = std::nullopt) const
+				void visit(Functor&& visitor, const Layout& layout) const
 				{
-					if (!layout)
-						layout = buildLayout();
-
-					for (const auto& visit : layout->nodes)
+					for (const auto& visit : layout.nodes)
 					{
 						visitor(
 							visit.depth, 
