@@ -53,7 +53,7 @@ namespace cpl
 	{
 		constexpr static std::size_t MaxRegions = 255;
 		constexpr static std::size_t MaxDepth = 16; // sizeof ThreadState = 400
-		constexpr static std::size_t MaxSpans = 63; // sizeof FrameSnapshot = 2048
+		constexpr static std::size_t MaxSpans = 127; // sizeof FrameSnapshot = 2048
 
 		struct Region
 		{
@@ -379,13 +379,15 @@ namespace cpl
 #define CPL_PROFILE_BEGIN(name) { CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), 0)
 #define CPL_PROFILE_END }
 #define CPL_PROFILE_WORK(name, work) CPL_PROFILE_INTERNAL(name, CPL_CONCAT(profilerCached, __COUNTER__), work)
-#define CPL_PROFILE_EXPRESSION(expr) CPL_PROFILE_EXPRESSION_INTERNAL(expr, cachedName)
+#define CPL_PROFILE_EXPRESSION(expr) CPL_PROFILE_EXPRESSION_INTERNAL(expr, CPL_CONCAT(profilerCached, __COUNTER__))
 
 #else
 
 #define CPL_PROFILE(name)
 #define CPL_PROFILE_WORK(name, work)
 #define CPL_PROFILE_EXPRESSION(expr) expr
+#define CPL_PROFILE_BEGIN(name) {
+#define CPL_PROFILE_END }
 
 #endif
 

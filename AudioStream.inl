@@ -63,6 +63,9 @@ namespace cpl
 	{
 		if (const auto * audio = std::get_if<AudioPacket>(&frame))
 		{
+			// TODO: Having this here completely breaks the output rendering??
+			CPL_PROFILE("AudioStream::Output::handleAudioPacket");
+
 			audioInput.insertFrameIntoBuffer(*audio);
 		}
 		else

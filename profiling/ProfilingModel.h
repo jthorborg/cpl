@@ -100,6 +100,7 @@ namespace cpl
 				std::optional<Scalar> coeff;
 
 				OrdinalTracker ordinalTracker;
+				std::uint32_t lastFrameNumber{};
 				decltype(Span::depth) maxDepthSeen{};
 				std::optional<bool> isCadenceLike;
 			};
@@ -155,9 +156,12 @@ namespace cpl
 
 				// receives (int depth, Region::Identifier, Seconds start, Seconds self, Seconds total)
 				template<typename Functor>
-				void visit(Functor&& visitor, const Layout& layout = buildLayout()) const
+				void visit(Functor&& visitor, std::optional<Layout> layout = std::nullopt) const
 				{
-					for (const auto& visit : layout.nodes)
+					if (!layout)
+						layout = buildLayout();
+
+					for (const auto& visit : layout->nodes)
 					{
 						visitor(
 							visit.depth, 
@@ -196,7 +200,7 @@ namespace cpl
 							auto position = top.runningPosition + node.parentOffset;
 							auto proportion = node.self / node.total;
 
-							auto isKept = node.children.empty() || proportion > parentSelfPruningThreshold;
+							auto isKept = node.children.empty() || !std::isnormal(proportion) || proportion > parentSelfPruningThreshold;
 
 							if (isKept)
 							{
@@ -248,6 +252,10 @@ namespace cpl
 				lane.drain(
 					[&, this](const FrameSnapshot& snapshot)
 					{
+						// Handle broken snapshots later.
+						if (snapshot.droppedSpans > 0)
+							return;
+
 						// only record the start of the first (in a possible string of meta) frame(s).
 						if (!root.frameStart)
 						{
@@ -260,10 +268,6 @@ namespace cpl
 								root.coeff = 1 - std::exp(-*root.deltaT / ewmaConstant.load(std::memory_order_relaxed));
 							}
 						}
-
-						// Handle broken snapshots later.
-						if (snapshot.droppedSpans > 0)
-							return;
 
 						accumulate(root, snapshot);
 
@@ -286,6 +290,8 @@ namespace cpl
 
 							commit(root, duration, Seconds(snapshot.work / snapshot.workDenominator));
 						}
+
+						root.lastFrameNumber = snapshot.frameNumber;
 					}
 				);
 			}
