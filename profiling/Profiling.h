@@ -31,6 +31,7 @@
 #ifndef CPL_PROFILING_H
 #define CPL_PROFILING_H
 
+#include <string_view>
 
 // Compile-time master gate. OFF => every macro/instrumentation point below
 // expands to nothing (no string literals emitted); a new cpl-based plugin pays zero beyond empty support structures.
@@ -150,6 +151,24 @@ namespace cpl
 
 			}
 
+			// Single-drainer invariant: the lane queues are SPSC, so calls to this function
+			// must be serialized with any other usage (like profiling models)
+			void clear()
+			{
+				while (true)
+				{
+					Storage s;
+
+					if (!queue.popElement(s))
+						return;
+				}
+			}
+
+
+			void setEnabled(bool shouldBeEnabled) noexcept { enabled = shouldBeEnabled; }
+
+		private:
+
 			template<typename IntegratingFunctor>
 			void drain(IntegratingFunctor&& f)
 			{
@@ -165,10 +184,6 @@ namespace cpl
 					f(*s.getData());
 				}
 			}
-
-			void setEnabled(bool shouldBeEnabled) noexcept { enabled = shouldBeEnabled; }
-
-		private:
 
 			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
 
@@ -263,19 +278,19 @@ namespace cpl
 			/// Some amount of work. It's possible to express zero work while having a denominator, in which case this frame
 			/// may be interpreted as stitching to the next workful frame.
 			/// </param>
-			/// <param name="denominator"/>
+			/// <param name="denominator">
 			/// The amount of work per second, must always be specified but can change over time.
 			/// </param>
 			void setWork(float work, float denominator)
 			{
-				if (denominator <= 0)
-					CPL_RUNTIME_EXCEPTION("Work cannot be expressed over 0 or less time");
-
-				if (work < 0)
-					CPL_RUNTIME_EXCEPTION("Work cannot be negative");
-
 				if (storage)
 				{
+					if (!(denominator > 0))
+						CPL_RUNTIME_EXCEPTION("Work cannot be expressed over 0 or less time");
+
+					if (!(work >= 0))
+						CPL_RUNTIME_EXCEPTION("Work cannot be negative");
+
 					auto& data = *storage->getData();
 
 					// Until having thought more about this, don't submit work twice
@@ -375,7 +390,7 @@ namespace cpl
 
 		inline Region::Identifier loadOrAssignRegion(const char* name, std::atomic<Region::Identifier>& cached)
 		{
-			auto tempRegion = cached.load(std::memory_order_relaxed);
+			auto tempRegion = cached.load(std::memory_order_acquire);
 			
 			// assume loaded early return
 			if (tempRegion != cpl::Profiling::Region::Identifier::Invalid)
@@ -384,7 +399,7 @@ namespace cpl
 			tempRegion = cpl::Profiling::registerRegion(name); 
 			auto expectedRegion = cpl::Profiling::Region::Identifier::Invalid; 
 
-			if (!cached.compare_exchange_strong(expectedRegion, tempRegion, std::memory_order_relaxed))
+			if (!cached.compare_exchange_strong(expectedRegion, tempRegion, std::memory_order_release))
 				tempRegion = expectedRegion; // potentially relinquish the old (only potentially possible)
 
 			return tempRegion;
@@ -399,12 +414,7 @@ namespace cpl
 
 			}
 
-			template<typename IntegratingFunctor>
-			void drain(IntegratingFunctor&& f)
-			{
-
-			}
-
+			void clear() { }
 			void setEnabled(bool shouldBeEnabled) noexcept {  }
 
 		private:

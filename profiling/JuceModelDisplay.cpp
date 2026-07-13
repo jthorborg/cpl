@@ -42,7 +42,11 @@ namespace cpl
 			, timeAxisValue(&timeRange, &timeChoices)
 		{
 			for (auto& lane : lanes)
+			{
+				// discard any potentially old frames in the queue, so we don't get a huge d/T right off the bat.
+				lane->clear();
 				lane->setEnabled(true);
+			}
 
 			// Each lane pools 8 snapshots and producers drop (never allocate) when full,
 			// so a drain rate below the fastest producer only decimates - it doesn't break anything.
@@ -93,10 +97,6 @@ namespace cpl
 
 		void EWMAProfilerComponent::timerCallback()
 		{
-			// Single-drainer invariant: the lane queues are SPSC, and this timer callback
-			// is the only consumer of all three lanes - the model is created, updated and
-			// read exclusively on the message thread. Draining a lane from anywhere else,
-			// or reading the model off-thread, breaks this.
 			for (auto& lane : lanes)
 				model.consume(*lane);
 
@@ -133,13 +133,14 @@ namespace cpl
 			if (laneDatas.empty())
 				return;
 
+			// This isn't using the dynamic layout depth to avoid flickering allocation sizes.
 			auto totalDepthsNeeded = std::accumulate(
 				laneDatas.begin(),
 				laneDatas.end(),
 				0,
 				[](int acc, const auto& l)
 				{
-					return acc + l.maxDepthSeen() + 5; // +1 for levels, +1 to ensure one slot inbetween all lanes
+					return acc + l.maxDepthSeen() + 5; // +1 for levels, +1 to ensure one slot inbetween all lanes, +3 for some bias
 				}
 			);
 

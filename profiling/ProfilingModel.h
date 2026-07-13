@@ -223,7 +223,6 @@ namespace cpl
 				}
 
 				LaneData(const LaneData& other) = default;
-				LaneData& operator = (const LaneData& other) = default;
 
 			private:
 
@@ -259,10 +258,6 @@ namespace cpl
 				lane.drain(
 					[&, this](const FrameSnapshot& snapshot)
 					{
-						// Handle broken snapshots later.
-						if (snapshot.droppedSpans > 0)
-							return;
-
 						// only record the start of the first (in a possible string of meta) frame(s).
 						if (!root.frameStart)
 						{
@@ -276,8 +271,10 @@ namespace cpl
 							}
 						}
 
-						accumulate(root, snapshot);
-
+						// It's possible to partially parse broken snapshots, but for now, just ignore them.
+						if (snapshot.droppedSpans == 0)
+							accumulate(root, snapshot);
+						
 						auto duration = snapshot.stopTs - *root.frameStart;
 
 						if (!root.isCadenceLike)
