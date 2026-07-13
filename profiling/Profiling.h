@@ -134,20 +134,12 @@ namespace cpl
 			bool isCadenceFrame() const noexcept { return workDenominator == 0; }
 		};
 
-		struct Lane
+		class Lane
 		{
-			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
+			friend class ProfilerFrame;
+			friend class EWMAModel;
 
-			LockFreeDataQueue<FrameSnapshot> queue;
-			const std::string name;
-			std::uint32_t frameCounter;
-			const bool isRealTime;
-			/// <summary>
-			/// If enabled, created <see cref="ProfilerFrame"/>s will store data.
-			/// Otherwise, the lane will only be drained and all profiling earlies out.
-			/// </summary>
-			cpl::weak_atomic<bool> enabled;
-
+		public:
 			Lane(std::string_view name, bool isRealTime)
 				: queue(8)
 				, name(name)
@@ -173,6 +165,22 @@ namespace cpl
 					f(*s.getData());
 				}
 			}
+
+			void setEnabled(bool shouldBeEnabled) noexcept { enabled = shouldBeEnabled; }
+
+		private:
+
+			typedef LockFreeDataQueue<FrameSnapshot>::ElementAccess Storage;
+
+			LockFreeDataQueue<FrameSnapshot> queue;
+			const std::string name;
+			std::uint32_t frameCounter;
+			const bool isRealTime;
+			/// <summary>
+			/// If enabled, created <see cref="ProfilerFrame"/>s will store data.
+			/// Otherwise, the lane will only be drained and all profiling earlies out.
+			/// </summary>
+			cpl::weak_atomic<bool> enabled;
 		};
 
 		// Transient bookkeeping for a scope that is entered-but-not-yet-exited.
@@ -382,18 +390,11 @@ namespace cpl
 			return tempRegion;
 		}
 #else
-		struct Lane
+		class Lane
 		{
-			const std::string name;
-			std::uint32_t frameCounter;
-			const bool isRealTime;
-			cpl::weak_atomic<bool> enabled;
+		public:
 
 			Lane(std::string_view name, bool isRealTime)
-				: name(name)
-				, frameCounter(0)
-				, isRealTime(isRealTime)
-				, enabled(false)
 			{
 
 			}
@@ -403,6 +404,10 @@ namespace cpl
 			{
 
 			}
+
+			void setEnabled(bool shouldBeEnabled) noexcept {  }
+
+		private:
 		};
 
 		class ProfilerFrame

@@ -42,7 +42,7 @@ namespace cpl
 			, timeAxisValue(&timeRange, &timeChoices)
 		{
 			for (auto& lane : lanes)
-				lane->enabled = true;
+				lane->setEnabled(true);
 
 			// Each lane pools 8 snapshots and producers drop (never allocate) when full,
 			// so a drain rate below the fastest producer only decimates - it doesn't break anything.
@@ -73,7 +73,7 @@ namespace cpl
 		EWMAProfilerComponent::~EWMAProfilerComponent()
 		{
 			for (auto& lane : lanes)
-				lane->enabled = false;
+				lane->setEnabled(false);
 		}
 
 		void EWMAProfilerComponent::setTimeAxisMode(TimeAxisModes mode)
