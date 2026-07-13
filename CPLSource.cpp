@@ -48,6 +48,12 @@
 // io and stuff
 
 #include "CPresetManager.cpp"
+
+#if CPL_PROFILING
+#include "profiling/JuceModelDisplay.cpp"
+#endif
+
+
 #endif
 
 #include "CModule.cpp"
