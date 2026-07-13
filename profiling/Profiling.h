@@ -31,29 +31,43 @@
 #ifndef CPL_PROFILING_H
 #define CPL_PROFILING_H
 
-#include "../MacroConstants.h"
-#include "../Exceptions.h"
-#include "../lib/LockFreeDataQueue.h"
-
-// Compile-time master gate. OFF => every macro/instrumentation point below
-// expands to nothing (no string literals emitted); a new cpl-based plugin pays zero beyond empty support structures.
-#ifndef CPL_PROFILING
-	#define CPL_PROFILING 0
-#endif
-
-#include "ProfilingClock.h"
 #include <atomic>
 #include <optional>
 #include <array>
 #include <limits>
 
+#include "../MacroConstants.h"
+#include "../Exceptions.h"
+#include "../lib/LockFreeDataQueue.h"
+#include "ProfilingClock.h"
+
+// Compile-time master gate. OFF => every macro/instrumentation point below
+// expands to nothing (no string literals emitted); a new cpl-based plugin pays zero beyond empty support structures.
+#ifndef CPL_PROFILING
+	#define CPL_PROFILING 0
+#else
+
+#ifndef CPL_PROFILING_MAXREGIONS 
+#define CPL_PROFILING_MAXREGIONS 255
+#endif
+
+#ifndef CPL_PROFILING_MAXDEPTH 
+#define CPL_PROFILING_MAXDEPTH 16 // sizeof ThreadState = 400
+#endif
+
+#ifndef CPL_PROFILING_MAXSPANS
+#define CPL_PROFILING_MAXSPANS 127 // sizeof FrameSnapshot = 4096
+#endif
+
+#endif
+
 namespace cpl
 {
 	namespace Profiling
 	{
-		constexpr static std::size_t MaxRegions = 255;
-		constexpr static std::size_t MaxDepth = 16; // sizeof ThreadState = 400
-		constexpr static std::size_t MaxSpans = 127; // sizeof FrameSnapshot = 2048
+		constexpr static std::size_t MaxRegions = CPL_PROFILING_MAXREGIONS;
+		constexpr static std::size_t MaxDepth = CPL_PROFILING_MAXDEPTH; 
+		constexpr static std::size_t MaxSpans = CPL_PROFILING_MAXSPANS;
 
 		struct Region
 		{
@@ -125,13 +139,19 @@ namespace cpl
 			LockFreeDataQueue<FrameSnapshot> queue;
 			const std::string name;
 			std::uint32_t frameCounter;
-			bool isRealTime;
+			const bool isRealTime;
+			/// <summary>
+			/// If enabled, created <see cref="ProfilerFrame"/>s will store data.
+			/// Otherwise, the lane will only be drained and all profiling earlies out.
+			/// </summary>
+			cpl::weak_atomic<bool> enabled;
 
-			Lane(std::string_view name, bool isRealtime)
+			Lane(std::string_view name, bool isRealTime)
 				: queue(8)
 				, name(name)
 				, frameCounter(0)
-				, isRealTime(isRealtime)
+				, isRealTime(isRealTime)
+				, enabled(false)
 			{
 
 			}
@@ -200,7 +220,7 @@ namespace cpl
 
 				// Use the non-allocating path to avoid infinite growth if noone ever drains the profiler lanes.
 				// Could even be argued we shouldn't grow either.
-				const bool acquired = lane && lane->queue.acquireFreeElement<false, true>(*storage);
+				const bool acquired = lane && lane->enabled && lane->queue.acquireFreeElement<false, true>(*storage);
 
 				if (!acquired)
 				{
