@@ -31,15 +31,6 @@
 #ifndef CPL_PROFILING_H
 #define CPL_PROFILING_H
 
-#include <atomic>
-#include <optional>
-#include <array>
-#include <limits>
-
-#include "../MacroConstants.h"
-#include "../Exceptions.h"
-#include "../lib/LockFreeDataQueue.h"
-#include "ProfilingClock.h"
 
 // Compile-time master gate. OFF => every macro/instrumentation point below
 // expands to nothing (no string literals emitted); a new cpl-based plugin pays zero beyond empty support structures.
@@ -47,17 +38,27 @@
 	#define CPL_PROFILING 0
 #else
 
-#ifndef CPL_PROFILING_MAXREGIONS 
-#define CPL_PROFILING_MAXREGIONS 255
-#endif
+	#include <atomic>
+	#include <optional>
+	#include <array>
+	#include <limits>
 
-#ifndef CPL_PROFILING_MAXDEPTH 
-#define CPL_PROFILING_MAXDEPTH 16 // sizeof ThreadState = 400
-#endif
+	#include "../MacroConstants.h"
+	#include "../Exceptions.h"
+	#include "../lib/LockFreeDataQueue.h"
+	#include "ProfilingClock.h"
 
-#ifndef CPL_PROFILING_MAXSPANS
-#define CPL_PROFILING_MAXSPANS 127 // sizeof FrameSnapshot = 4096
-#endif
+	#ifndef CPL_PROFILING_MAXREGIONS 
+	#define CPL_PROFILING_MAXREGIONS 255
+	#endif
+
+	#ifndef CPL_PROFILING_MAXDEPTH 
+	#define CPL_PROFILING_MAXDEPTH 16 // sizeof ThreadState = 400
+	#endif
+
+	#ifndef CPL_PROFILING_MAXSPANS
+	#define CPL_PROFILING_MAXSPANS 127 // sizeof FrameSnapshot = 4096
+	#endif
 
 #endif
 
@@ -65,6 +66,7 @@ namespace cpl
 {
 	namespace Profiling
 	{
+#if CPL_PROFILING
 		constexpr static std::size_t MaxRegions = CPL_PROFILING_MAXREGIONS;
 		constexpr static std::size_t MaxDepth = CPL_PROFILING_MAXDEPTH; 
 		constexpr static std::size_t MaxSpans = CPL_PROFILING_MAXSPANS;
@@ -379,6 +381,41 @@ namespace cpl
 
 			return tempRegion;
 		}
+#else
+		struct Lane
+		{
+			const std::string name;
+			std::uint32_t frameCounter;
+			const bool isRealTime;
+			cpl::weak_atomic<bool> enabled;
+
+			Lane(std::string_view name, bool isRealTime)
+				: name(name)
+				, frameCounter(0)
+				, isRealTime(isRealTime)
+				, enabled(false)
+			{
+
+			}
+
+			template<typename IntegratingFunctor>
+			void drain(IntegratingFunctor&& f)
+			{
+
+			}
+		};
+
+		class ProfilerFrame
+		{
+		public:
+
+			ProfilerFrame(Lane* lane) {}
+			void setWork(float work, float denominator) {}
+			~ProfilerFrame() {}
+
+		private:
+		};
+#endif
 	}
 }; // cpl
 

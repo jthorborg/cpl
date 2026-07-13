@@ -30,6 +30,10 @@
 #ifndef CPL_PROFILINGMODEL_H
 #define CPL_PROFILINGMODEL_H
 
+#if !CPL_PROFILING
+#error "Cannot use ProfilingModel.h without defining CPL_PROFILING"
+#endif
+
 #include "Profiling.h"
 #include <unordered_map>
 #include <vector>

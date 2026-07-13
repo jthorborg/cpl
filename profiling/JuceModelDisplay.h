@@ -30,6 +30,10 @@
 #ifndef CPL_JUCEMODELDISPLAY_H
 #define CPL_JUCEMODELDISPLAY_H
 
+#if !CPL_PROFILING
+#error "Cannot use JuceModelDisplay.h without defining CPL_PROFILING"
+#endif
+
 #include "ProfilingModel.h"
 #include "../Common.h"
 #include "../Mathext.h"
