@@ -37,10 +37,7 @@
 #include "../CMutex.h"
 #include "../Utility.h"
 #include <atomic>
-
-#if defined(__C11__) && defined(CPL_CLANG)
-#include <stdatomic.h>
-#endif
+#include "weak_atomic.h"
 
 #if ATOMIC_LLONG_LOCK_FREE != 2
 #pragma message cwarn("warning: Atomic integer operations are not lock-free for this platform!") 
@@ -52,23 +49,19 @@
 
 namespace cpl
 {
-
-
 	template<typename T>
-	class CLockFreeDataQueue
+	class LockFreeDataQueue
 	{
 	public:
 		struct ElementAccess;
 		friend struct ElementAccess;
 
-		CLockFreeDataQueue(std::size_t initialSize)
-			:
-			queue(new moodycamel::ReaderWriterQueue<T *>(initialSize)),
-			oldQueue(nullptr),
-			currentNumElements(initialSize),
-			freeElements(initialSize),
-			enqueuedDataAllocations(false),
-			enqueuedQueueAllocations(false)
+		LockFreeDataQueue(std::size_t initialSize)
+			: queue(new moodycamel::ReaderWriterQueue<T *>(initialSize))
+			, oldQueue(nullptr)
+			, currentNumElements(initialSize)
+			, freeElements(initialSize)
+			, lastFailedElement(nullptr)
 		{
 			insertDataElements(initialSize);
 		}
@@ -81,7 +74,7 @@ namespace cpl
 		public:
 			ElementAccess() : data(nullptr), parent(nullptr), isPop(false) {}
 
-			friend class CLockFreeDataQueue;
+			friend class LockFreeDataQueue;
 
 			T * getData()
 			{
@@ -109,13 +102,14 @@ namespace cpl
 						else if (!parent->queue.load()->try_enqueue(data))
 						{
 							parent->enqueuedQueueAllocations = true;
+							parent->lastFailedElement = data;
 						}
 					}
 				}
 			}
 		private:
 
-			void initialize(bool isPopped, T * dataToHold, CLockFreeDataQueue & parentQueue, bool forceAllocation = false)
+			void initialize(bool isPopped, T * dataToHold, LockFreeDataQueue & parentQueue, bool forceAllocation = false)
 			{
 				#if _DEBUG
 				if (dataToHold && parent)
@@ -133,7 +127,7 @@ namespace cpl
 			}
 
 			T * data;
-			CLockFreeDataQueue * parent;
+			LockFreeDataQueue * parent;
 
 			/// <summary>
 			/// If this access to any element is an element whom is popped from the queue (ie. to be consumed),
@@ -154,7 +148,14 @@ namespace cpl
 		bool acquireFreeElement(ElementAccess & d)
 		{
 			T * data;
-			if (freeElements.try_dequeue(data))
+
+			if (lastFailedElement)
+			{
+				d.initialize(false, lastFailedElement, *this);
+				lastFailedElement = nullptr;
+				return true;
+			}
+			else if (freeElements.try_dequeue(data))
 			{
 				d.initialize(false, data, *this);
 				return true;
@@ -262,7 +263,7 @@ namespace cpl
 			return queue.load()->size_approx();
 		}
 
-		~CLockFreeDataQueue()
+		~LockFreeDataQueue()
 		{
 
 			T * element;
@@ -282,7 +283,8 @@ namespace cpl
 
 			delete q;
 
-
+			if (lastFailedElement)
+				delete lastFailedElement;
 		}
 
 	private:
@@ -299,17 +301,23 @@ namespace cpl
 		std::atomic<moodycamel::ReaderWriterQueue<T *> *> queue;
 		moodycamel::ReaderWriterQueue<T *> * oldQueue;
 		moodycamel::ReaderWriterQueue<T *> freeElements;
-
+		// If we dequeue an element, and fail to push it, store it here in limbo until hopefully used
+		// Note that since there can only be one ElementAccess (pushing), we only ever need one limbo slot
+		T* lastFailedElement;
 		std::size_t currentNumElements;
 
 		/// <summary>
 		/// If set, try to grow the freeElements queue
 		/// </summary>
-		volatile bool enqueuedDataAllocations;
+		weak_atomic<bool> enqueuedDataAllocations;
 		/// <summary>
 		/// If set, try to grow the queue.
 		/// </summary>
-		volatile bool enqueuedQueueAllocations;
+		weak_atomic<bool> enqueuedQueueAllocations;
 	};
+
+
+	template<typename T>
+	using CLockFreeDataQueue = LockFreeDataQueue<T>;
 };
 #endif

@@ -199,7 +199,7 @@ namespace cpl
 
 		virtual bool format(const T & val, std::string & buf, FormattingFlags flags) override
 		{
-			return UnitFormatter<T>::format(std::round(val * 100), buf, flags);
+			return UnitFormatter<T>::format(std::round(val * 10000) / 100, buf, flags);
 		}
 
 		virtual bool interpret(const string_ref buf, T & val) override

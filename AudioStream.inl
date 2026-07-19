@@ -50,6 +50,9 @@ namespace cpl
 	template<typename T, std::size_t PacketSize>
 	inline void AudioStream<T, PacketSize>::Output::beginFrameProcessing()
 	{
+		if (auto lane = profilerLane.get())
+			profilerFrame.emplace(lane);
+
 		overhead.start(); all.start();
 		audioInput.resetOffsets();
 		oldInfo = info;
@@ -60,6 +63,8 @@ namespace cpl
 	{
 		if (const auto * audio = std::get_if<AudioPacket>(&frame))
 		{
+			CPL_PROFILE("AudioStream::Output::handleAudioPacket");
+
 			audioInput.insertFrameIntoBuffer(*audio);
 		}
 		else
@@ -99,6 +104,8 @@ namespace cpl
 			std::visit(
 				[this](auto && arg)
 				{
+					CPL_PROFILE("AudioStream::Output::storeMetaPacket");
+
 					using TArg = std::decay_t<decltype(arg)>;
 
 					if constexpr (std::is_same_v<TArg, TransportData>)
@@ -133,6 +140,8 @@ namespace cpl
 	template<typename T, std::size_t PacketSize>
 	inline void AudioStream<T, PacketSize>::Output::endFrameProcessing()
 	{
+		CPL_PROFILE_BEGIN("AudioStream::Output::endFrameProcessing");
+
 		auto channels = audioInput.buffer.size();
 
 		bool signalChange = producerInfoChange;
@@ -146,6 +155,8 @@ namespace cpl
 		}
 		else
 		{
+			CPL_PROFILE("::stream-properties-changed");
+
 			std::lock_guard<std::mutex> lock(inputCommandMutex);
 
 			if (consumerInfoChange)
@@ -194,6 +205,8 @@ namespace cpl
 			// before any async callers are notified.
 			if (signalChange && info.storeAudioHistory && audioHistoryDifferent)
 			{
+				CPL_PROFILE("::ensure-audio-history-storage");
+
 				ensureAudioHistoryStorage(
 					channels,
 					info.audioHistorySize,
@@ -202,8 +215,12 @@ namespace cpl
 				);
 			}
 
+			if (profilerFrame)
+				profilerFrame->setWork(static_cast<float>(audioInput.containedSamples), static_cast<float>(info.sampleRate));
+
 			overhead.pause();
 
+			CPL_PROFILE_BEGIN("::on-listener-stream-audio");
 			for (auto& listener : listeners)
 			{
 				if (signalChange)
@@ -220,6 +237,8 @@ namespace cpl
 					);
 				}
 			}
+			CPL_PROFILE_END;
+
 
 			playhead.advance(audioInput.containedSamples);
 			overhead.resume();
@@ -228,6 +247,8 @@ namespace cpl
 		// Publish into circular buffer here.
 		if (info.storeAudioHistory && info.audioHistorySize && channels)
 		{
+			CPL_PROFILE("::store-audio-history");
+
 			std::unique_lock<std::mutex> bufferLock(aBufferMutex, std::try_to_lock);
 			// decide whether to wait on the buffers
 			if (!bufferLock.owns_lock() && info.blockOnHistoryBuffer)
@@ -235,10 +256,13 @@ namespace cpl
 
 			if (bufferLock.owns_lock())
 			{
+				CPL_PROFILE("::merge-input-to-buffer");
 				mergeInputToBuffer(bufferLock, &audioInput, playhead, info);
 			}
 			else
 			{
+				CPL_PROFILE("::defer-audio-history");
+
 				// defer current samples to a later point in time.
 				for (std::size_t i = 0; i < channels; ++i)
 				{
@@ -257,8 +281,10 @@ namespace cpl
 				deferredCheckpointBufferInfo = info;
 			}
 		}
+		CPL_PROFILE_END;
+		profilerFrame.reset();
 
-		// post measurements.
+		// TODO: Remove all of this. post measurements.
 		double timeFraction = (double)audioInput.containedSamples;
 		if (std::isnormal(timeFraction))
 		{
@@ -341,6 +367,8 @@ namespace cpl
 		if (internalInfo.isSuspended)
 			return;
 
+		CPL_PROFILE("AudioStream::Input::processIncomingAudio");
+
 		CPL_RUNTIME_ASSERTION(numChannels == internalInfo.channels);
 
 		InputFrameBatch batch(*this);
@@ -392,6 +420,8 @@ namespace cpl
 
 			while (n > 0)
 			{
+				CPL_PROFILE("::publish-mono-packet");
+
 				auto const aSamples = std::min(singleChannelCapacity, n - std::max(std::int64_t(0), n - singleChannelCapacity));
 
 				if (aSamples > 0)
@@ -415,6 +445,8 @@ namespace cpl
 
 			while (n > 0)
 			{
+				CPL_PROFILE("::publish-multichannel-packet");
+
 				auto const aSamples = std::min(capacity, n - std::max(std::int64_t(0), n - capacity));
 
 				if (aSamples > 0)
