@@ -188,7 +188,7 @@ namespace cpl
 
 		virtual const std::string & getBundleContext() const noexcept override
 		{
-			return behaviour.getContext();
+			return this->behaviour.getContext();
 		}
 
 		virtual void parametersInstalled() override

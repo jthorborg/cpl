@@ -63,7 +63,6 @@ namespace cpl
 	{
 		if (const auto * audio = std::get_if<AudioPacket>(&frame))
 		{
-			// TODO: Having this here completely breaks the output rendering??
 			CPL_PROFILE("AudioStream::Output::handleAudioPacket");
 
 			audioInput.insertFrameIntoBuffer(*audio);
@@ -221,26 +220,24 @@ namespace cpl
 
 			overhead.pause();
 
+			CPL_PROFILE_BEGIN("::on-listener-stream-audio");
+			for (auto& listener : listeners)
 			{
-				CPL_PROFILE("::on-listener-stream-audio");
+				if (signalChange)
+					listener->onStreamPropertiesChanged(ctx, oldInfo);
 
-				for (auto& listener : listeners)
+				if (audioInput.containedSamples > 0)
 				{
-					if (signalChange)
-						listener->onStreamPropertiesChanged(ctx, oldInfo);
-
-					if (audioInput.containedSamples > 0)
-					{
-						listener->onStreamAudio
-						(
-							ctx,
-							audioInput.pointer.data(),
-							channels,
-							audioInput.containedSamples
-						);
-					}
+					listener->onStreamAudio
+					(
+						ctx,
+						audioInput.pointer.data(),
+						channels,
+						audioInput.containedSamples
+					);
 				}
 			}
+			CPL_PROFILE_END;
 
 
 			playhead.advance(audioInput.containedSamples);

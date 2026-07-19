@@ -366,20 +366,18 @@ namespace cpl
 			auto scale = oglc->getRenderingScale();
 			std::unique_ptr<juce::LowLevelGraphicsContext> context;
 			
-			{
-				CPL_PROFILE("OpenGLView::create2DGraphics");
-				context = juce::createOpenGLGraphicsContext(
-						*oglc,
-						static_cast<int>(scale * getWidth()),
-						static_cast<int>(scale * getHeight())
-				);
-			}
+			CPL_PROFILE_BEGIN("OpenGLView::create2DGraphics");
+			context = juce::createOpenGLGraphicsContext(
+					*oglc,
+					static_cast<int>(scale * getWidth()),
+					static_cast<int>(scale * getHeight())
+			);
+			CPL_PROFILE_END;
 
-
-			juce::Graphics g(*context);
+			CPL_PROFILE_EXPRESSION(juce::Graphics g(*context));
+			
 			if (scale != 1.0)
 				g.addTransform(AffineTransform::scale((float)scale));
-
 
 			CPL_DEBUGCHECKGL();
 
