@@ -39,6 +39,12 @@
 #include "../lib/AlignedAllocator.h"
 #include "../profiling/Profiling.h"
 
+#ifdef CPL_CLANG && CPL_ARM
+	#define CMPLX_UNROLL(depth) _Pragma("unroll")
+#else
+	#define CMPLX_UNROLL(depth)
+#endif
+
 namespace cpl
 {
 	namespace dsp
@@ -311,10 +317,10 @@ namespace cpl
 				std::size_t sC = vC * c.numVectors; // space filled by all vector bufs
 
 				return std::complex<Scalar>
-					(
-						state[sC * channel + c.centerFilter * vC + resonator + real * nR] / gainCoeff,
-						state[sC * channel + c.centerFilter * vC + resonator + imag * nR] / gainCoeff
-						);
+				(
+					state[sC * channel + c.centerFilter * vC + resonator + real * nR] / gainCoeff,
+					state[sC * channel + c.centerFilter * vC + resonator + imag * nR] / gainCoeff
+				);
 			}
 
 			/// <summary>
@@ -492,11 +498,9 @@ namespace cpl
 				std::size_t vC = nR * 2; // space filled by a vector buf
 				std::size_t sC = vC * constant.numVectors; // space filled by all vector bufs
 
-
-				 //  iterate over each filter for each sample for each channel for each vector.
+				//  iterate over each filter for each sample for each channel for each vector.
 				for (Types::fint_t k = 0; k < constant.numFilters; k += vfactor)
 				{
-
 					// pointer to current sample
 					const typename scalar_of<V>::type * audioInputs[numChannels];
 
@@ -504,11 +508,13 @@ namespace cpl
 					V s_r[inputDataChannels][staticVectors], s_i[inputDataChannels][staticVectors];
 
 					// and load them
+					CMPLX_UNROLL(staticVectors)
 					for (Types::fint_t v = 0; v < staticVectors; ++v)
 					{
 						p_r[v] = load<V>(&constant.coeff[v * vC + k + nR * real]); // cos: e^i*omega (real)
 						p_i[v] = load<V>(&constant.coeff[v * vC + k + nR * imag]); // sin: e^i*omega (imag)
 
+						CMPLX_UNROLL(inputDataChannels)
 						for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 						{
 							audioInputs[c] = &data[c][0];
@@ -517,14 +523,19 @@ namespace cpl
 							s_i[c][v] = load<V>(&state[sC * c + v * vC + k + nR * imag]);
 						}
 					}
+					
 					for (Types::fint_t sample = 0; sample < numSamples; ++sample)
 					{
+						
+						CMPLX_UNROLL(inputDataChannels)
 						for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 						{
 							// combing stage
 							V input = broadcast<V>(audioInputs[c]);
 
 							// v stage (m) (fc +- v * bw)
+							
+							CMPLX_UNROLL(staticVectors)
 							for (Types::fint_t v = 0; v < staticVectors; ++v)
 							{
 								t0 = s_r[c][v] * p_r[v] - s_i[c][v] * p_i[v];
@@ -534,11 +545,12 @@ namespace cpl
 
 							audioInputs[c]++;
 						}
-
-
 					}
+					
+					CMPLX_UNROLL(inputDataChannels)
 					for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 					{
+						CMPLX_UNROLL(staticVectors)
 						for (Types::fint_t v = 0; v < staticVectors; ++v)
 						{
 							store(&state[sC * c + v * vC + k + nR * real], s_r[c][v]); // state: e^i*omega (real)
@@ -565,8 +577,7 @@ namespace cpl
 				std::size_t vC = nR * 2; // space filled by a vector buf
 				std::size_t sC = vC; // space filled by all vector bufs
 
-
-				 //  iterate over each filter for each sample for each channel for each vector.
+				// iterate over each filter for each sample for each channel for each vector.
 				for (Types::fint_t k = 0; k < constant.numFilters; k += vfactor)
 				{
 
@@ -581,6 +592,7 @@ namespace cpl
 					p_r = load<V>(&constant.coeff[k + nR * real]); // cos: e^i*omega (real)
 					p_i = load<V>(&constant.coeff[k + nR * imag]); // sin: e^i*omega (imag)
 
+					CMPLX_UNROLL(inputDataChannels)
 					for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 					{
 						audioInputs[c] = &data[c][0];
@@ -591,6 +603,8 @@ namespace cpl
 
 					for (Types::fint_t sample = 0; sample < numSamples; ++sample)
 					{
+						
+						CMPLX_UNROLL(inputDataChannels)
 						for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 						{
 							// combing stage
@@ -605,6 +619,7 @@ namespace cpl
 						}
 					}
 
+					CMPLX_UNROLL(inputDataChannels)
 					for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 					{
 						store(&state[sC * c + k + nR * real], s_r[c]); // state: e^i*omega (real)
@@ -629,7 +644,7 @@ namespace cpl
 				std::size_t nR = constant.numResonators;
 				std::size_t vC = nR * 2; // space filled by a vector buf
 
-				 //  iterate over each filter for each sample for each channel for each vector.
+				//  iterate over each filter for each sample for each channel for each vector.
 				for (Types::fint_t k = 0; k < constant.numFilters; k += vfactor)
 				{
 
@@ -640,6 +655,7 @@ namespace cpl
 					V s_r[staticVectors], s_i[staticVectors];
 
 					// and load them
+					CMPLX_UNROLL(staticVectors)
 					for (Types::fint_t v = 0; v < staticVectors; ++v)
 					{
 						p_r[v] = load<V>(&constant.coeff[v * vC + k + nR * real]); // cos: e^i*omega (real)
@@ -654,6 +670,7 @@ namespace cpl
 							audioInputs[c] = &data[c][0];
 						}
 					}
+					
 					for (Types::fint_t sample = 0; sample < numSamples; ++sample)
 					{
 						// combing stage
@@ -661,6 +678,7 @@ namespace cpl
 							real = broadcast<V>(audioInputs[0]++),
 							imag = broadcast<V>(audioInputs[1]++);
 
+						CMPLX_UNROLL(staticVectors)
 						for (Types::fint_t v = 0; v < staticVectors; ++v)
 						{
 							t0 = s_r[v] * p_r[v] - s_i[v] * p_i[v];
@@ -669,7 +687,8 @@ namespace cpl
 							s_i[v] += imag;
 						}
 					}
-
+					
+					CMPLX_UNROLL(staticVectors)
 					for (Types::fint_t v = 0; v < staticVectors; ++v)
 					{
 						store(&state[v * vC + k + nR * real], s_r[v]); // state: e^i*omega (real)
@@ -698,7 +717,6 @@ namespace cpl
 				//  iterate over each filter for each sample for each channel.
 				for (Types::fint_t filter = 0; filter < constant.numFilters; filter += vfactor)
 				{
-
 					// pointer to current sample
 					const typename scalar_of<V>::type * audioInputs[numChannels];
 
@@ -721,6 +739,7 @@ namespace cpl
 						s_p1_i[inputDataChannels];
 
 					// and load them
+					CMPLX_UNROLL(inputDataChannels)
 					for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 					{
 						audioInputs[c] = &data[c][0];
@@ -734,6 +753,7 @@ namespace cpl
 
 					for (Types::fint_t sample = 0; sample < numSamples; ++sample)
 					{
+						CMPLX_UNROLL(inputDataChannels)
 						for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 						{
 							// combing stage
@@ -756,9 +776,9 @@ namespace cpl
 
 							audioInputs[c]++;
 						}
-
-
 					}
+					
+					CMPLX_UNROLL(inputDataChannels)
 					for (Types::fint_t c = 0; c < inputDataChannels; ++c)
 					{
 						store(&state[sC * c + 0 * vC + filter + nR * real], s_m1_r[c]); // state: e^i*omega-q (real)
