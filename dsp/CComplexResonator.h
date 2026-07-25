@@ -39,7 +39,7 @@
 #include "../lib/AlignedAllocator.h"
 #include "../profiling/Profiling.h"
 
-#ifdef CPL_CLANG && CPL_ARM
+#if defined(CPL_CLANG) && defined(CPL_ARM)
 	#define CMPLX_UNROLL(depth) _Pragma("unroll")
 #else
 	#define CMPLX_UNROLL(depth)
