@@ -52,7 +52,7 @@ namespace cpl
 		public:
 
 			using Scalar = float;
-			using Seconds = Seconds<Scalar>;
+			using Seconds = Profiling::Seconds<Scalar>;
 
 		private:
 
