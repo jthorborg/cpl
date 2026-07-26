@@ -97,10 +97,7 @@ namespace cpl::dsp
 		sampleRate_ = sampleRate;
 		frameIndex = 0;
 
-		const auto tau = cpl::simd::consts<double>::tau;
-		phase.assign(numChannels, 0.0);
-		for (int ch = 0; ch < numChannels; ++ch)
-			phase[ch] = ch * tau / 4.0;
+		phase = 0.0;
 
 		pinkState.assign(numChannels, std::array<double, 5>{0.0});
 		brownState.assign(numChannels, 0.0);

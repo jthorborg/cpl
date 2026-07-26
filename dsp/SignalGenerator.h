@@ -133,7 +133,7 @@ namespace cpl::dsp
 		void processSweepedWave(T** inout, index_t numFrames, const ProcessConfig& config);
 
 		index_t numChannels_;
-		std::vector<double> phase;
+		double phase;
 		std::vector<std::array<double, 5>> pinkState;
 		std::vector<double> brownState;
 		std::vector<double> bluePrevWhite;

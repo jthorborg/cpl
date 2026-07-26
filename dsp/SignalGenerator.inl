@@ -202,6 +202,7 @@
 
 			const auto tau = cpl::simd::consts<double>::tau;
 			const double phaseInc = freq * tau / sampleRate_;
+			const auto channelOffset = tau / 4.0;
 
 			if (config.perChannel)
 			{
@@ -209,22 +210,26 @@
 				{
 					for (index_t ch = 0; ch < numChannels_; ++ch)
 					{
-						const double out = std::sin(phase[ch]) * config.amplitude + config.dcOffset;
+						const double out = std::sin(phase + channelOffset * ch) * config.amplitude + config.dcOffset;
 						inout[ch][frame] = static_cast<T>(out);
-						phase[ch] += phaseInc;
-						if (phase[ch] >= tau) phase[ch] -= tau;
 					}
+
+					phase += phaseInc;
+					if (phase >= tau)
+						phase -= tau;
 				}
 			}
 			else
 			{
 				for (index_t frame = 0; frame < numFrames; ++frame)
 				{
-					const double out = std::sin(phase[0]) * config.amplitude + config.dcOffset;
+					const double out = std::sin(phase) * config.amplitude + config.dcOffset;
 					for (index_t ch = 0; ch < numChannels_; ++ch)
 						inout[ch][frame] = static_cast<T>(out);
-					phase[0] += phaseInc;
-					if (phase[0] >= tau) phase[0] -= tau;
+
+					phase += phaseInc;
+					if (phase >= tau) 
+						phase -= tau;
 				}
 			}
 		}
