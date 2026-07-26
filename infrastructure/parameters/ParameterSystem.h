@@ -245,13 +245,15 @@ namespace cpl
 				Parameters::Handle handleOfThis,
 				bool paramIsAutomatable = true,
 				bool paramCanChangeOthers = false,
-				std::string nameContext = ""
+				std::string nameContext = "",
+				int paramVersionCohort = 1
 			)
 				: parent(parentToRef)
 				, handle(handleOfThis)
 				, parameter(parameterToRef)
 				, isAutomatable(paramIsAutomatable)
 				, canChangeOthers(paramCanChangeOthers)
+				, versionCohort(paramVersionCohort)
 				, nameContext(std::move(nameContext))
 			{
 
@@ -263,6 +265,7 @@ namespace cpl
 				, parameter(other.parameter)
 				, isAutomatable(other.isAutomatable)
 				, canChangeOthers(other.canChangeOthers)
+				, versionCohort(other.versionCohort)
 				, nameContext(std::move(other.nameContext))
 			{
 
@@ -334,6 +337,10 @@ namespace cpl
 
 			bool isParameterAutomated() const { return isAutomatable; }
 			bool canParameterChangeOthers() const { return canChangeOthers; }
+			/// <summary>
+			/// The release cohort this parameter was introduced in. See ParameterGroup::setVersionCohort().
+			/// </summary>
+			int getVersionCohort() const noexcept { return versionCohort; }
 
 		private:
 
@@ -342,6 +349,7 @@ namespace cpl
 			BaseParameter* parameter;
 			bool isAutomatable;
 			bool canChangeOthers;
+			int versionCohort;
 			ABoolFlag changedFromProcessor;
 			std::set<UIListener*> uiListeners;
 			QualifiedGroup* parent;
@@ -409,6 +417,25 @@ namespace cpl
 		}
 
 		/// <summary>
+		/// Stamps all subsequently registered parameters with the given release cohort, until changed again.
+		/// Defaults to 1, meaning every parameter shipped so far belongs to the first cohort.
+		///
+		/// A cohort identifies the release a parameter was *introduced* in, and is exported to hosts as the
+		/// juce::AudioProcessorParameter version hint. Audio Units (Logic, GarageBand) identify parameters by
+		/// index rather than ID, and derive that index by sorting on the cohort first - so parameters added in
+		/// a later release must carry a strictly higher cohort than anything already shipped, or they will sort
+		/// in amongst existing parameters and displace them, breaking saved automation.
+		///
+		/// Rules:
+		///  - Always pass a literal. A value derived from the current program version silently re-tags already
+		///    shipped parameters on every release, which defeats the entire mechanism.
+		///  - Numbering is plugin-wide, not per-group: a cohort denotes a release, so every group adding
+		///    parameters in that release uses the same number, and a number is never reused afterwards.
+		///  - Never remove or rename a shipped parameter; deprecate it in place instead.
+		/// </summary>
+		void setVersionCohort(int cohort) noexcept { currentCohort = cohort; }
+
+		/// <summary>
 		/// This function must only be called during initialization, ie. before any audio callbacks are done.
 		/// Additionally, it only makes sense to call it on the UI thread.
 		/// </summary>
@@ -417,7 +444,7 @@ namespace cpl
 			if (isSealed)
 				CPL_RUNTIME_EXCEPTION("Parameters registered to the system while it's sealed");
 			auto pos = containedParameters.size();
-			containedParameters.emplace_back(this, param, (Parameters::Handle)(pos + offset), shouldBeAutomatable, canChangeOthers, nameContext);
+			containedParameters.emplace_back(this, param, (Parameters::Handle)(pos + offset), shouldBeAutomatable, canChangeOthers, nameContext, currentCohort);
 			return static_cast<Parameters::Handle>(pos + offset);
 		}
 
@@ -783,6 +810,7 @@ namespace cpl
 		}
 
 		bool isSealed;
+		int currentCohort = 1;
 
 		struct BundleInstallReference
 		{

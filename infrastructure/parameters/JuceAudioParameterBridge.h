@@ -117,12 +117,17 @@ namespace cpl
 		}
 	};
 
+	/// <summary>
+	/// Exports every parameter in the group to the host, carrying each parameter's release cohort across as the
+	/// juce::AudioProcessorParameter version hint. See ParameterGroup::setVersionCohort() for what a cohort means
+	/// and why it must never be derived from the current program version.
+	/// </summary>
 	template<class T, typename InternalFrameworkType, typename BaseParameterT>
-	inline void bridgeJuceAudioProcessorParameters(juce::AudioProcessor& processor, ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group, int juceVersionHint)
+	inline void bridgeJuceAudioProcessorParameters(juce::AudioProcessor& processor, ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group)
 	{
 		for (auto& param : group)
 		{
-			processor.addParameter(new JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>(param, juceVersionHint));
+			processor.addParameter(new JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>(param, param.getVersionCohort()));
 		}
 	}
 };
