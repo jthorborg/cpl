@@ -102,13 +102,13 @@ namespace cpl
 		
 		std::int32_t quantizedToInt32() const
 		{
-			if (parts.major > std::numeric_limits<std::int8_t>::max())
+			if (parts.major > static_cast<std::uint16_t>(std::numeric_limits<std::int8_t>::max()))
 				throw std::overflow_error("version major cannot be quantized into 8-bit signed storage");
 			
-			if (parts.minor > std::numeric_limits<std::int8_t>::max())
+			if (parts.minor > static_cast<std::uint16_t>(std::numeric_limits<std::int8_t>::max()))
 				throw std::overflow_error("version minor cannot be quantized into 8-bit signed storage");
 			
-			if (parts.build > std::numeric_limits<std::int16_t>::max())
+			if (parts.build > static_cast<std::uint16_t>(std::numeric_limits<std::int16_t>::max()))
 				throw std::overflow_error("version build cannot be quantized into 16-bit signed storage");
 			
 			return

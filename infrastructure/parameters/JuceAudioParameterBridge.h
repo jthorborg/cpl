@@ -54,12 +54,16 @@ namespace cpl
 
 		int getNumSteps() const override
 		{
-			return view.getTransformer().getQuantization();
+			const auto quantization = view.getTransformer().getQuantization();
+
+			// Transformers report a non-positive quantization to mean "continuous". That's an internal sentinel,
+			// not a step count - hosts expect JUCE's default resolution for a continuous parameter instead.
+			return quantization > 0 ? quantization : juce::AudioProcessor::getDefaultNumParameterSteps();
 		}
 
 		bool isDiscrete() const override
 		{
-			return getNumSteps() != -1;
+			return view.getTransformer().getQuantization() > 0;
 		}
 
 		bool isBoolean() const override
@@ -118,17 +122,30 @@ namespace cpl
 	};
 
 	/// <summary>
-	/// Exports every parameter in the group to the host, carrying each parameter's release cohort across as the
-	/// juce::AudioProcessorParameter version hint. See ParameterGroup::setVersionCohort() for what a cohort means
-	/// and why it must never be derived from the current program version.
+	/// Exports every parameter in the group as a juce::AudioProcessorParameterGroup, ready to hand to
+	/// juce::AudioProcessor::addParameterGroup(). Each parameter's release cohort is carried across as the
+	/// juce::AudioProcessorParameter version hint - see ParameterGroup::setVersionCohort() for what a cohort
+	/// means, and why it must never be derived from the current program version.
+	///
+	/// Children are emitted in registration order, and juce flattens a parameter tree depth-first in child
+	/// order, so the resulting flat parameter list - and with it every parameter index a host sees - is
+	/// identical to adding the parameters one by one.
 	/// </summary>
 	template<class T, typename InternalFrameworkType, typename BaseParameterT>
-	inline void bridgeJuceAudioProcessorParameters(juce::AudioProcessor& processor, ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group)
+	inline std::unique_ptr<juce::AudioProcessorParameterGroup> createJuceParameterGroup(ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group)
 	{
+		// Group identifiers must avoid separators like "." and must not read as plain integers, otherwise they
+		// can collide with the legacy index-based parameter identifiers.
+		auto juceGroup = std::make_unique<juce::AudioProcessorParameterGroup>(group.getName(), group.getName(), "");
+
 		for (auto& param : group)
 		{
-			processor.addParameter(new JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>(param, param.getVersionCohort()));
+			juceGroup->addChild(
+				std::make_unique<JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>>(param, param.getVersionCohort())
+			);
 		}
+
+		return juceGroup;
 	}
 };
 
