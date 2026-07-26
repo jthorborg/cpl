@@ -56,6 +56,8 @@
 		template<typename T>
 		void SignalGenerator::process(T** inout, index_t numFrames, const ProcessConfig& config)
 		{
+			CPL_PROFILE("SignalGenerator::Process");
+
 			const index_t numChannels = numChannels_;
 
 			switch (config.type)
