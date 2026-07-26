@@ -39,6 +39,7 @@
 #include <string>
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -97,6 +98,23 @@ namespace cpl
 		std::string toString() const
 		{
 			return std::to_string(parts.major) + "." + std::to_string(parts.minor) + "." + std::to_string(parts.build);
+		}
+		
+		std::int32_t quantizedToInt32() const
+		{
+			if (parts.major > std::numeric_limits<std::int8_t>::max())
+				throw std::overflow_error("version major cannot be quantized into 8-bit signed storage");
+			
+			if (parts.minor > std::numeric_limits<std::int8_t>::max())
+				throw std::overflow_error("version minor cannot be quantized into 8-bit signed storage");
+			
+			if (parts.build > std::numeric_limits<std::int16_t>::max())
+				throw std::overflow_error("version build cannot be quantized into 16-bit signed storage");
+			
+			return
+				static_cast<std::int8_t>(parts.major) << 24 |
+				static_cast<std::int8_t>(parts.minor) << 16 |
+				static_cast<std::int16_t>(parts.build);
 		}
 
 		bool operator < (const Version & other) const

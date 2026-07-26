@@ -15,8 +15,8 @@ namespace cpl
 		typedef typename cpl::ParameterGroup<T, InternalFrameworkType, BaseParameterT>::Formatter Formatter;
 		typedef T ValueType;
 
-		JuceAudioParameter(View& baseParameter)
-			: juce::AudioProcessorParameter()
+		JuceAudioParameter(View& baseParameter, int versionHint)
+			: juce::AudioProcessorParameter(versionHint)
 			, view(baseParameter)
 		{
 		}
@@ -118,11 +118,11 @@ namespace cpl
 	};
 
 	template<class T, typename InternalFrameworkType, typename BaseParameterT>
-	inline void bridgeJuceAudioProcessorParameters(juce::AudioProcessor& processor, ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group)
+	inline void bridgeJuceAudioProcessorParameters(juce::AudioProcessor& processor, ParameterGroup<T, InternalFrameworkType, BaseParameterT>& group, int juceVersionHint)
 	{
 		for (auto& param : group)
 		{
-			processor.addParameter(new JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>(param));
+			processor.addParameter(new JuceAudioParameter<T, InternalFrameworkType, BaseParameterT>(param, juceVersionHint));
 		}
 	}
 };
